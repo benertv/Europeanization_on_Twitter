@@ -1,0 +1,840 @@
+---
+editor_options:
+  chunk_output_type: console
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load packages
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+```
+
+```{r}
+# load data
+stm_data <- read.csv(file = "stm_data.csv")
+```
+
+```{r}
+# Subset by actor group
+politicians <- stm_data[which(stm_data$actor_group==10),]
+civil <- stm_data[which(stm_data$actor_group==30),]
+media <- stm_data[which(stm_data$actor_group==40),]
+citizens <- stm_data[which(stm_data$actor_group==60),]
+```
+
+```{r}
+tp_pol <- politicians %>% summarise(
+  Topic_1 = sum(Topic1),
+  Topic_2 = sum(Topic2),
+  Topic_3 = sum(Topic3),
+  Topic_4 = sum(Topic4),
+  Topic_5 = sum(Topic5),
+  Topic_6 = sum(Topic6),
+  Topic_7 = sum(Topic7),
+  Topic_8 = sum(Topic8),
+  Topic_9 = sum(Topic9),
+  Topic_10 = sum(Topic10),
+  Topic_11 = sum(Topic11),
+  Topic_12 = sum(Topic12),
+  Topic_13 = sum(Topic13),
+  Topic_14 = sum(Topic14),
+  Topic_15 = sum(Topic15),
+  Topic_16 = sum(Topic16),
+  Topic_17 = sum(Topic17),
+  Topic_18 = sum(Topic18),
+  Topic_19 = sum(Topic19),
+  Topic_20 = sum(Topic20),
+  Topic_21 = sum(Topic21),
+  Topic_22 = sum(Topic22),
+  Topic_23 = sum(Topic23),
+  Topic_24 = sum(Topic24),
+  Topic_25 = sum(Topic25),
+)
+
+tp_pol$total <- rowSums(tp_pol[, c(1:25)]) # Row sum = number of Tweets!
+
+# Jede Spalte durch Anzahl der Tweets teilen
+tp_pol <- tp_pol[,1:25]/tp_pol[,26] 
+rowSums(tp_pol[, c(1:25)]) # Muss 1 bzw. 100% ergeben
+
+# Transpose data frame
+tp_pol <- as.data.frame(t(tp_pol))
+colnames(tp_pol) <- "Topic_Props"
+tp_pol$topic <- row.names(tp_pol)
+
+# Change Topic Names and Add Interpretations
+tp_pol$topic <- gsub("_", " ", tp_pol$topic) # Replace underscore with space 
+
+# Give labels (=Topic names)
+tp_pol$label <- ""
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 1", 
+                       "General calls to vote in EP 2019", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 2", 
+                       "EP election results: Focus Brexit Party", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 3", 
+                       "Tactics and voter mobilisation of anti-Brexit parties", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 4", 
+                       "Campaign of challenger parties", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 5", 
+                       "Voter mobilization and Sunday Question", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 6", 
+                       "Eurosceptic/right-wing voices in Irish local elections 2019 and EP elections",
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 7", 
+                       "Acknowledgement of Guaido in Venezuela (#-spam)", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 8", 
+                       "Demand for changes in economic, trade, and climate policy", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 9", 
+                       "Spanish parliamentary elections 2019 and Catalonia Conflict", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 10", 
+                       "Problems with voter registration", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 11", 
+                       "Administrational burdens of voting as EU citizen", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 12", 
+                       "Discussion of EP election polls and results", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 13", 
+                       "Pre-election analyses of EU and national political landscapes", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 14", 
+                       "Promotion of Pegida demonstration in Dresden (#-spam)", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 15", 
+                       "EP Campaigns: kickoffs", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 16", 
+                       "Promotion of Spitzenkandidaten debate", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 17", 
+                       "Promotion of envipillar public debates with MEPs about climate policies", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 18", 
+                       "Financial policies and costs of social policies", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 19", 
+                       "Debate about EU Commission presidency", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 20", 
+                       "British general elections 2019 (UK)", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 21", 
+                       "Doubts in parties and elections (political apathy)", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 22", 
+                       "Protests against resettlement of Iranian refugees (#-spam)", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 23", 
+                       "Irish local elections 2019 and EP elections results", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 24", 
+                       "Dutch right-wing supporters and Nexit", 
+                       tp_pol$label)
+
+tp_pol$label <- ifelse(tp_pol$topic=="Topic 25", 
+                       "Citizen’s perspective on EP election results", 
+                       tp_pol$label)
+
+# Change color association for plotting
+# national topics will be red
+tp_pol$color <- "red" 
+
+# European topics will be blue
+tp_pol$color <- ifelse(tp_pol$topic=="Topic 1" | 
+                        tp_pol$topic=="Topic 5" | 
+                        tp_pol$topic=="Topic 8" | 
+                        tp_pol$topic=="Topic 10" |
+                        tp_pol$topic=="Topic 11" |
+                        tp_pol$topic=="Topic 13" | 
+                        tp_pol$topic=="Topic 15" | 
+                        tp_pol$topic=="Topic 16" | 
+                        tp_pol$topic=="Topic 17" | 
+                        tp_pol$topic=="Topic 18" | 
+                        tp_pol$topic=="Topic 19" | 
+                        tp_pol$topic=="Topic 21" |
+                        tp_pol$topic=="Topic 25", 
+                       "dodgerblue", 
+                        tp_pol$color)
+
+# Noise topics/hijcking topics will be gray
+tp_pol$color <- ifelse(tp_pol$topic=="Topic 7" | 
+                        tp_pol$topic=="Topic 14" | 
+                        tp_pol$topic=="Topic 22", 
+                       "gray70", 
+                       tp_pol$color)
+
+# Sort by topic proportions
+tp_pol <- tp_pol %>%
+   arrange(Topic_Props) %>%
+   mutate(topic = factor(topic, levels = unique(topic))) 
+
+# Create plot
+p_pol <- tp_pol %>% 
+ggplot(aes(x = Topic_Props, y = topic)) + 
+  geom_col(fill = tp_pol$color, width = 0.7) +
+  geom_text(aes(label = label),
+    hjust = -0.02,
+    vjust = 0.3,
+    size = 2.5, 
+    col = "black") + 
+  # Change x scale setting
+  scale_x_continuous(
+    limits = c(0.0, 0.35),
+    breaks = seq(0.0, 0.3, by = 0.05), 
+    expand = c(0, 0), # The horizontal axis does not extend to either side
+    position = "bottom") +  # Labels are located on the top
+  ggtitle("Political actors") +
+  theme_grey(base_size = 10) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10), 
+     axis.ticks.y = element_blank()) +
+  xlab("") + 
+  ylab("") # no y label
+```
+
+```{r}
+tp_med <- media %>% summarise(
+  Topic_1 = sum(Topic1),
+  Topic_2 = sum(Topic2),
+  Topic_3 = sum(Topic3),
+  Topic_4 = sum(Topic4),
+  Topic_5 = sum(Topic5),
+  Topic_6 = sum(Topic6),
+  Topic_7 = sum(Topic7),
+  Topic_8 = sum(Topic8),
+  Topic_9 = sum(Topic9),
+  Topic_10 = sum(Topic10),
+  Topic_11 = sum(Topic11),
+  Topic_12 = sum(Topic12),
+  Topic_13 = sum(Topic13),
+  Topic_14 = sum(Topic14),
+  Topic_15 = sum(Topic15),
+  Topic_16 = sum(Topic16),
+  Topic_17 = sum(Topic17),
+  Topic_18 = sum(Topic18),
+  Topic_19 = sum(Topic19),
+  Topic_20 = sum(Topic20),
+  Topic_21 = sum(Topic21),
+  Topic_22 = sum(Topic22),
+  Topic_23 = sum(Topic23),
+  Topic_24 = sum(Topic24),
+  Topic_25 = sum(Topic25),
+)
+
+tp_med$total <- rowSums(tp_med[, c(1:25)]) # Row sum = number of Tweets!
+
+# Jede Spalte durch Anzahl der Tweets teilen
+tp_med <- tp_med[,1:25]/tp_med[,26] 
+rowSums(tp_med[, c(1:25)]) # Muss 1 bzw. 100% ergeben
+
+# Transpose data frame
+tp_med <- as.data.frame(t(tp_med))
+colnames(tp_med) <- "Topic_Props"
+tp_med$topic <- row.names(tp_med)
+
+# Change Topic Names and Add Interpretations
+tp_med$topic <- gsub("_", " ", tp_med$topic) # Replace underscore with space 
+
+# Give labels (=Topic names)
+tp_med$label <- ""
+tp_med$label <- ifelse(tp_med$topic=="Topic 1", 
+                       "General calls to vote in EP 2019", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 2", 
+                       "EP election results: Focus Brexit Party", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 3", 
+                       "Tactics and voter mobilisation of anti-Brexit parties", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 4", 
+                       "Campaign of challenger parties", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 5", 
+                       "Voter mobilization and Sunday Question", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 6", 
+                       "Eurosceptic/right-wing voices in Irish local elections 2019 and EP elections",
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 7", 
+                       "Acknowledgement of Guaido in Venezuela (#-spam)", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 8", 
+                       "Demand for changes in economic, trade, and climate policy", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 9", 
+                       "Spanish parliamentary elections 2019 and Catalonia Conflict", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 10", 
+                       "Problems with voter registration", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 11", 
+                       "Administrational burdens of voting as EU citizen", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 12", 
+                       "Discussion of EP election polls and results", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 13", 
+                       "Pre-election analyses of EU and national political landscapes", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 14", 
+                       "Promotion of Pegida demonstration in Dresden (#-spam)", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 15", 
+                       "EP Campaigns: kickoffs", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 16", 
+                       "Promotion of Spitzenkandidaten debate", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 17", 
+                       "Promotion of envipillar public debates with MEPs about climate policies", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 18", 
+                       "Financial policies and costs of social policies", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 19", 
+                       "Debate about EU Commission presidency", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 20", 
+                       "British general elections 2019", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 21", 
+                       "Doubts in parties and elections (political apathy)", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 22", 
+                       "Protests against resettlement of Iranian refugees (#-spam)", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 23", 
+                       "Irish local elections 2019 and EP elections results", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 24", 
+                       "Dutch right-wing supporters and Nexit", 
+                       tp_med$label)
+
+tp_med$label <- ifelse(tp_med$topic=="Topic 25", 
+                       "Citizen’s perspective on EP election results", 
+                       tp_med$label)
+
+# Change color association for plotting
+# national topics will be red
+tp_med$color <- "red" 
+
+# European topics will be blue
+tp_med$color <- ifelse(tp_med$topic=="Topic 1" | 
+                        tp_med$topic=="Topic 5" | 
+                        tp_med$topic=="Topic 8" | 
+                        tp_med$topic=="Topic 10" |
+                        tp_med$topic=="Topic 11" |
+                        tp_med$topic=="Topic 13" | 
+                        tp_med$topic=="Topic 15" | 
+                        tp_med$topic=="Topic 16" | 
+                        tp_med$topic=="Topic 17" | 
+                        tp_med$topic=="Topic 18" | 
+                        tp_med$topic=="Topic 19" | 
+                        tp_med$topic=="Topic 21" |
+                        tp_med$topic=="Topic 25", 
+                       "dodgerblue", 
+                        tp_med$color)
+
+# Noise topics/hijcking topics will be gray
+tp_med$color <- ifelse(tp_med$topic=="Topic 7" | 
+                        tp_med$topic=="Topic 14" | 
+                        tp_med$topic=="Topic 22", 
+                       "gray70", 
+                       tp_med$color)
+
+# Sort by topic proportions
+tp_med <- tp_med %>%
+   arrange(Topic_Props) %>%
+   mutate(topic = factor(topic, levels = unique(topic))) 
+
+# Create plot
+p_med <- tp_med %>% 
+ggplot(aes(x = Topic_Props, y = topic)) + 
+  geom_col(fill = tp_med$color, width = 0.7) +
+  geom_text(aes(label = label),
+    hjust = -0.02,
+    vjust = 0.3,
+    size = 2.5, 
+    col = "black") + 
+  # Change x scale setting
+  scale_x_continuous(
+    limits = c(0.0, 0.35),
+    breaks = seq(0.0, 0.3, by = 0.05), 
+    expand = c(0, 0), # The horizontal axis does not extend to either side
+    position = "bottom") +  # Labels are located on the top
+  ggtitle("Media actors") +
+  theme_grey(base_size = 10) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10), 
+     axis.ticks.y = element_blank()) +
+  xlab("") + 
+  ylab("") # no y label
+```
+
+```{r}
+tp_civ <- civil %>% summarise(
+  Topic_1 = sum(Topic1),
+  Topic_2 = sum(Topic2),
+  Topic_3 = sum(Topic3),
+  Topic_4 = sum(Topic4),
+  Topic_5 = sum(Topic5),
+  Topic_6 = sum(Topic6),
+  Topic_7 = sum(Topic7),
+  Topic_8 = sum(Topic8),
+  Topic_9 = sum(Topic9),
+  Topic_10 = sum(Topic10),
+  Topic_11 = sum(Topic11),
+  Topic_12 = sum(Topic12),
+  Topic_13 = sum(Topic13),
+  Topic_14 = sum(Topic14),
+  Topic_15 = sum(Topic15),
+  Topic_16 = sum(Topic16),
+  Topic_17 = sum(Topic17),
+  Topic_18 = sum(Topic18),
+  Topic_19 = sum(Topic19),
+  Topic_20 = sum(Topic20),
+  Topic_21 = sum(Topic21),
+  Topic_22 = sum(Topic22),
+  Topic_23 = sum(Topic23),
+  Topic_24 = sum(Topic24),
+  Topic_25 = sum(Topic25),
+)
+
+tp_civ$total <- rowSums(tp_civ[, c(1:25)]) # Row sum = number of Tweets!
+
+# Jede Spalte durch Anzahl der Tweets teilen
+tp_civ <- tp_civ[,1:25]/tp_civ[,26] 
+rowSums(tp_civ[, c(1:25)]) # Muss 1 bzw. 100% ergeben
+
+# Transpose data frame
+tp_civ <- as.data.frame(t(tp_civ))
+colnames(tp_civ) <- "Topic_Props"
+tp_civ$topic <- row.names(tp_civ)
+
+# Change Topic Names and Add Interpretations
+tp_civ$topic <- gsub("_", " ", tp_civ$topic) # Replace underscore with space 
+
+# Give labels (=Topic names)
+tp_civ$label <- ""
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 1", 
+                       "General calls to vote in EP 2019", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 2", 
+                       "EP election results: Focus Brexit Party", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 3", 
+                       "Tactics and voter mobilisation of anti-Brexit parties", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 4", 
+                       "Campaign of challenger parties", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 5", 
+                       "Voter mobilization and Sunday Question", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 6", 
+                       "Eurosceptic/right-wing voices in Irish local elections 2019 and EP elections",
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 7", 
+                       "Acknowledgement of Guaido in Venezuela (#-spam)", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 8", 
+                       "Demand for changes in economic, trade, and climate policy", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 9", 
+                       "Spanish parliamentary elections 2019 and Catalonia Conflict", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 10", 
+                       "Problems with voter registration", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 11", 
+                       "Administrational burdens of voting as EU citizen", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 12", 
+                       "Discussion of EP election polls and results", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 13", 
+                       "Pre-election analyses of EU and national political landscapes", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 14", 
+                       "Promotion of Pegida demonstration in Dresden (#-spam)", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 15", 
+                       "EP Campaigns: kickoffs", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 16", 
+                       "Promotion of Spitzenkandidaten debate", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 17", 
+                       "Promotion of envipillar public debates with MEPs about climate policies", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 18", 
+                       "Financial policies and costs of social policies", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 19", 
+                       "Debate about EU Commission presidency", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 20", 
+                       "British general elections 2019", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 21", 
+                       "Doubts in parties and elections (political apathy)", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 22", 
+                       "Protests against resettlement of Iranian refugees (#-spam)", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 23", 
+                       "Irish local elections 2019 and EP elections results", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 24", 
+                       "Dutch right-wing supporters and Nexit", 
+                       tp_civ$label)
+
+tp_civ$label <- ifelse(tp_civ$topic=="Topic 25", 
+                       "Citizen’s perspective on EP election results", 
+                       tp_civ$label)
+
+# Change color association for plotting
+# national topics will be red
+tp_civ$color <- "red" 
+
+# European topics will be blue
+tp_civ$color <- ifelse(tp_civ$topic=="Topic 1" | 
+                        tp_civ$topic=="Topic 5" | 
+                        tp_civ$topic=="Topic 8" | 
+                        tp_civ$topic=="Topic 10" |
+                        tp_civ$topic=="Topic 11" |
+                        tp_civ$topic=="Topic 13" | 
+                        tp_civ$topic=="Topic 15" | 
+                        tp_civ$topic=="Topic 16" | 
+                        tp_civ$topic=="Topic 17" | 
+                        tp_civ$topic=="Topic 18" | 
+                        tp_civ$topic=="Topic 19" | 
+                        tp_civ$topic=="Topic 21" |
+                        tp_civ$topic=="Topic 25", 
+                       "dodgerblue", 
+                        tp_civ$color)
+
+# Noise topics/hijcking topics will be gray
+tp_civ$color <- ifelse(tp_civ$topic=="Topic 7" | 
+                        tp_civ$topic=="Topic 14" | 
+                        tp_civ$topic=="Topic 22", 
+                       "gray70", 
+                       tp_civ$color)
+
+# Sort by topic proportions
+tp_civ <- tp_civ %>%
+   arrange(Topic_Props) %>%
+   mutate(topic = factor(topic, levels = unique(topic))) 
+
+# Create plot
+p_civ <- tp_civ %>% 
+ggplot(aes(x = Topic_Props, y = topic)) + 
+  geom_col(fill = tp_civ$color, width = 0.7) +
+  geom_text(aes(label = label),
+    hjust = -0.02,
+    vjust = 0.3,
+    size = 2.5, 
+    col = "black") + 
+  # Change x scale setting
+  scale_x_continuous(
+    limits = c(0.0, 0.35),
+    breaks = seq(0.0, 0.3, by = 0.05), 
+    expand = c(0, 0), # The horizontal axis does not extend to either side
+    position = "bottom") +  # Labels are located on the top
+  ggtitle("Civil society actors") +
+  theme_grey(base_size = 10) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10), 
+     axis.ticks.y = element_blank()) +
+  xlab("Expected topic propostions") + 
+  ylab("") # no y label
+```
+
+```{r}
+tp_cit <- citizens %>% summarise(
+  Topic_1 = sum(Topic1),
+  Topic_2 = sum(Topic2),
+  Topic_3 = sum(Topic3),
+  Topic_4 = sum(Topic4),
+  Topic_5 = sum(Topic5),
+  Topic_6 = sum(Topic6),
+  Topic_7 = sum(Topic7),
+  Topic_8 = sum(Topic8),
+  Topic_9 = sum(Topic9),
+  Topic_10 = sum(Topic10),
+  Topic_11 = sum(Topic11),
+  Topic_12 = sum(Topic12),
+  Topic_13 = sum(Topic13),
+  Topic_14 = sum(Topic14),
+  Topic_15 = sum(Topic15),
+  Topic_16 = sum(Topic16),
+  Topic_17 = sum(Topic17),
+  Topic_18 = sum(Topic18),
+  Topic_19 = sum(Topic19),
+  Topic_20 = sum(Topic20),
+  Topic_21 = sum(Topic21),
+  Topic_22 = sum(Topic22),
+  Topic_23 = sum(Topic23),
+  Topic_24 = sum(Topic24),
+  Topic_25 = sum(Topic25),
+)
+
+tp_cit$total <- rowSums(tp_cit[, c(1:25)]) # Row sum = number of Tweets!
+
+# Jede Spalte durch Anzahl der Tweets teilen
+tp_cit <- tp_cit[,1:25]/tp_cit[,26] 
+rowSums(tp_cit[, c(1:25)]) # Muss 1 bzw. 100% ergeben
+
+# Transpose data frame
+tp_cit <- as.data.frame(t(tp_cit))
+colnames(tp_cit) <- "Topic_Props"
+tp_cit$topic <- row.names(tp_cit)
+
+# Change Topic Names and Add Interpretations
+tp_cit$topic <- gsub("_", " ", tp_cit$topic) # Replace underscore with space 
+
+# Give labels (=Topic names)
+tp_cit$label <- ""
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 1", 
+                       "General calls to vote in EP 2019", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 2", 
+                       "EP election results: Focus Brexit Party", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 3", 
+                       "Tactics and voter mobilisation of anti-Brexit parties", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 4", 
+                       "Campaign of challenger parties", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 5", 
+                       "Voter mobilization and Sunday Question", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 6", 
+                       "Eurosceptic/right-wing voices in Irish local elections 2019 and EP elections",
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 7", 
+                       "Acknowledgement of Guaido in Venezuela (#-spam)", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 8", 
+                       "Demand for changes in economic, trade, and climate policy", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 9", 
+                       "Spanish parliamentary elections 2019 and Catalonia Conflict", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 10", 
+                       "Problems with voter registration", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 11", 
+                       "Administrational burdens of voting as EU citizen", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 12", 
+                       "Discussion of EP election polls and results", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 13", 
+                       "Pre-election analyses of EU and national political landscapes", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 14", 
+                       "Promotion of Pegida demonstration in Dresden (#-spam)", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 15", 
+                       "EP Campaigns: kickoffs", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 16", 
+                       "Promotion of Spitzenkandidaten debate", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 17", 
+                       "Promotion of envipillar public debates with MEPs about climate policies", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 18", 
+                       "Financial policies and costs of social policies", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 19", 
+                       "Debate about EU Commission presidency", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 20", 
+                       "British general elections 2019", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 21", 
+                       "Doubts in parties and elections (political apathy)", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 22", 
+                       "Protests against resettlement of Iranian refugees", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 23", 
+                       "Irish local elections 2019 and EP elections results", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 24", 
+                       "Dutch right-wing supporters and Nexit", 
+                       tp_cit$label)
+
+tp_cit$label <- ifelse(tp_cit$topic=="Topic 25", 
+                       "Citizen’s perspective on EP election results", 
+                       tp_cit$label)
+
+# Change color association for plotting
+# national topics will be red
+tp_cit$color <- "red" 
+
+# European topics will be blue
+tp_cit$color <- ifelse(tp_cit$topic=="Topic 1" | 
+                        tp_cit$topic=="Topic 5" | 
+                        tp_cit$topic=="Topic 8" | 
+                        tp_cit$topic=="Topic 10" |
+                        tp_cit$topic=="Topic 11" |
+                        tp_cit$topic=="Topic 13" | 
+                        tp_cit$topic=="Topic 15" | 
+                        tp_cit$topic=="Topic 16" | 
+                        tp_cit$topic=="Topic 17" | 
+                        tp_cit$topic=="Topic 18" | 
+                        tp_cit$topic=="Topic 19" | 
+                        tp_cit$topic=="Topic 21" |
+                        tp_cit$topic=="Topic 25", 
+                       "dodgerblue", 
+                        tp_cit$color)
+
+# Noise topics/hijcking topics will be gray
+tp_cit$color <- ifelse(tp_cit$topic=="Topic 7" | 
+                        tp_cit$topic=="Topic 14" | 
+                        tp_cit$topic=="Topic 22", 
+                       "gray70", 
+                       tp_cit$color)
+
+# Sort by topic proportions
+tp_cit <- tp_cit %>%
+   arrange(Topic_Props) %>%
+   mutate(topic = factor(topic, levels = unique(topic))) 
+
+# Create plot
+p_cit <- tp_cit %>% 
+ggplot(aes(x = Topic_Props, y = topic)) + 
+  geom_col(fill = tp_cit$color, width = 0.7) +
+  geom_text(aes(label = label),
+    hjust = -0.02,
+    vjust = 0.3,
+    size = 2.5, 
+    col = "black") + 
+  # Change x scale setting
+  scale_x_continuous(
+    limits = c(0.0, 0.35),
+    breaks = seq(0.0, 0.3, by = 0.05), 
+    expand = c(0, 0), # The horizontal axis does not extend to either side
+    position = "bottom") +  # Labels are located on the top
+  ggtitle("Citizens") +
+  theme_grey(base_size = 10) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10), 
+     axis.ticks.y = element_blank()) +
+  xlab("Expected topic proportions") + 
+  ylab("") # no y label
+```
+
+```{r}
+figure <- ggarrange(p_pol, p_med, p_civ, p_cit,
+                    labels = NULL,
+                    ncol = 2, nrow = 2)
+```
+
