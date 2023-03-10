@@ -1,0 +1,186 @@
+---
+title: "01_Data preparation: Create sample for manual actor coding"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Sampling actors for manual coding
+
+```{r}
+library(lubridate)
+```
+
+```{r}
+# Extract month and day from date
+# names(tt)
+tt$month <- month(tt$created_at)
+tt$days <- day(tt$created_at)
+
+# Create separate dataframes for each week
+tt_apr <- tt[which(tt$month==4),]
+tt_may <- tt[which(tt$month==5),]
+
+w14 <- tt_apr[tt_apr$days %in% 1:7,]
+w15 <- tt_apr[tt_apr$days %in% 8:14,]
+w16 <- tt_apr[tt_apr$days %in% 15:21,]
+w17 <- tt_apr[tt_apr$days %in% 22:28,]
+w18 <- rbind(tt_apr[tt_apr$days %in% 29:30,], tt_may[tt_may$days %in% 1:5,])
+w19 <- tt_may[tt_may$days %in% 6:12,]
+w20 <- tt_may[tt_may$days %in% 13:19,]
+w21 <- tt_may[tt_may$days %in% 20:26,]
+w22 <- tt_may[tt_may$days %in% 27:31,]
+```
+
+
+```{r}
+# Find most important actors in debate
+# create a list of the w14-w22 data frames
+w_list <- list(w14, w15, w16, w17, w18, w19, w20, w21, w22)
+
+# initialize empty lists for each type of analysis
+tweets_list <- retweets_list <- quotes_list <- reply_list <- mentions_list <- list()
+
+# iterate through the list of data frames
+for (i in seq_along(w_list)) {
+  # get the screen name counts for the top 100 tweets
+  tweets_list[[i]] <- sort(table(w_list[[i]]$screen_name), decreasing = TRUE)[1:100]
+  
+  # get the screen name counts for the top 100 retweets
+  retweets_list[[i]] <- sort(table(w_list[[i]]$retweet_screen_name), decreasing = TRUE)[1:100]
+  
+  # get the screen name counts for the top 100 quotes
+  quotes_list[[i]] <- sort(table(w_list[[i]]$quoted_screen_name), decreasing = TRUE)[1:100]
+  
+  # get the screen name counts for the top 100 replies
+  reply_list[[i]] <- sort(table(w_list[[i]]$reply_to_screen_name), decreasing = TRUE)[1:100]
+  
+  # get the screen name counts for the top 100 mentions
+  mentions <- unlist(w_list[[i]]$mentions_screen_name)
+  mentions_list[[i]] <- sort(table(mentions), decreasing = TRUE)[1:100]
+}
+
+```
+
+```{r}
+# Create dfs as input for sample function
+# create a list of the w14-w22 data frames
+w_list <- list(w14, w15, w16, w17, w18, w19, w20, w21, w22)
+
+# initialize empty lists for each type of analysis
+tweets_random <- retweets_random<- quotes_random <- reply_random <- mentions_random <- list()
+
+# iterate through the list of data frames
+for (i in seq_along(w_list)) {
+  # get the screen name counts for the top 100 tweets
+  tweets_random[[i]] <- sort(table(w_list[[i]]$screen_name), decreasing = TRUE)
+  
+  # get the screen name counts for the top 100 retweets
+  retweets_random[[i]] <- sort(table(w_list[[i]]$retweet_screen_name), decreasing = TRUE)
+  
+  # get the screen name counts for the top 100 quotes
+  quotes_random[[i]] <- sort(table(w_list[[i]]$quoted_screen_name), decreasing = TRUE)
+  
+  # get the screen name counts for the top 100 replies
+  reply_random[[i]] <- sort(table(w_list[[i]]$reply_to_screen_name), decreasing = TRUE)
+  
+  # get the screen name counts for the top 100 mentions
+  mentions <- unlist(w_list[[i]]$mentions_screen_name)
+  mentions_random[[i]] <- sort(table(mentions), decreasing = TRUE)
+}
+
+```
+
+# Create function for random sample
+```{r}
+# Input: df_list= list of dfs
+# frac = Percent to be sampled
+draw_random_sample <- function(df_list, frac) {
+  
+  require(dplyr)
+  
+  # Create empty data frame
+  sample <- data.frame(matrix(ncol=1, nrow=0))
+  colnames(sample) <- c("name")
+  
+  # create random sample for each df in list
+  for (i in 1:length(df_list)) {
+  x <- df_list[[i]]
+  x <- as.data.frame(x)
+  z <- sample_frac(x, frac)
+  sample <- rbind(sample, z)
+  }
+
+  return(sample)
+}
+```
+
+# Draw random samples
+```{r}
+random_sample_tweets <- draw_random_sample(tweets_random, 0.03)
+random_sample_retweets <- draw_random_sample(retweets_random, 0.03)
+random_sample_quotes <- draw_random_sample(quotes_random, 0.03)
+random_sample_reply <- draw_random_sample(reply_random, 0.03)
+random_sample_mentions <- draw_random_sample(mentions_random, 0.03)
+
+# Change colnames
+colnames(random_sample_tweets) <- c("name", "freq")
+colnames(random_sample_retweets) <- c("name", "freq")
+colnames(random_sample_quotes) <- c("name", "freq")
+colnames(random_sample_reply) <- c("name", "freq")
+colnames(random_sample_mentions) <- c("name", "freq")
+
+# Combine  
+random_sample_coding <- rbind(random_sample_tweets, random_sample_retweets, random_sample_quotes, random_sample_reply, random_sample_mentions)
+```
+
+# Make unique file for coding
+```{r}
+# Create function to unlist top sample
+unlist_top_sample <- function(df_list) {
+  
+  # Create empty data frame
+  sample <- data.frame(matrix(ncol=2, nrow=0))
+  colnames(sample) <- c("name", "freq")
+  
+  # create random sample for each df in list
+  for (i in 1:length(df_list)) {
+  x <- df_list[[i]]
+  x <- as.data.frame(x)
+  sample <- rbind(sample, x)
+  }
+
+  return(sample)
+}
+```
+
+```{r}
+# unlist top sample
+top_sample_tweets <- unlist_top_sample(tweets_list)
+top_sample_retweets <- unlist_top_sample(retweets_list)
+top_sample_quotes <- unlist_top_sample(quotes_list)
+top_sample_reply <- unlist_top_sample(reply_list)
+top_sample_mentions <- unlist_top_sample(mentions_list)
+
+# Change colnames 
+colnames(top_sample_tweets) <- c("name", "freq")
+colnames(top_sample_retweets) <- c("name", "freq")
+colnames(top_sample_quotes) <- c("name", "freq")
+colnames(top_sample_reply) <- c("name", "freq")
+colnames(top_sample_mentions) <- c("name", "freq")
+
+# Combine
+top_sample_coding <- rbind(top_sample_tweets, top_sample_retweets, top_sample_quotes, top_sample_reply, top_sample_mentions)
+
+# Combine random and top sample
+full_sample_coding <- rbind(top_sample_coding, random_sample_coding)
+
+# Unify
+full_sample_coding <- as.data.frame(unique(full_sample_coding$name))
+```
