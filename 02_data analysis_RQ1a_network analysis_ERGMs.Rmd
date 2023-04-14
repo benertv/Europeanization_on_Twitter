@@ -1,0 +1,154 @@
+---
+title: "ERGM"
+author: "Vivien Benert"
+date: "29 7 2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ergm)
+library(intergraph)
+```
+
+# Convert igraph to network objects
+```{r}
+# require(intergraph)
+network_quotes <- asNetwork(subgraph_quotes_ergm)
+network_replies <- asNetwork(subgraph_replies_ergm)
+network_retweets <- asNetwork(subgraph_retweets_ergm)
+network_mentions <- asNetwork(subgraph_mentions_ergm)
+```
+
+# ERGMs
+It is good practice to run a summmary command on any model before fitting it with ergm. This is the ERGM equivalent of performing some descriptive analysis on your covariates. This can help you make sure you understand what the term represents, and it can help to flag potential problems that will lead to poor modeling results (e.g. zero counts of a variable).
+
+Note: ERGM calculation was performed on the HPC cluster of Freie Universität Berlin due to the amount of data. ERGMs are generally very computationally expensive and only models for the quote and the reply network converged in a reasonable amount of time. Models for mentions and retweets (the two largest networks in the analysis) did not converge within 90 days and can thus not be included in the inferential analysis. I would not recommend trying to reproduce the ERGM results on a local computer since it will take up a lot of RAM and time. However, the code for each model is provided below for transparency reasons.
+
+```{r}
+summary(network_quotes ~ edges + #intercept
+          twopath + #simple connectivity
+          mutual + # reciprocity
+          gwesp(decay=0, fixed=T) + # geometrically edgewise shared partners
+          idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + # popularity
+          odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + # activity
+          nodeifactor("actor_group", levels=c(2,4,5,7)) + # sender effects
+          nodeofactor("actor_group", levels=c(2,4,5,7)) + # receiver effects
+          nodematch("actor_group", levels=c(2,4,5,7), diff = F) + # homophily
+          nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = F) + # homophily
+          nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + #sender effects
+          nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) + # receiver effects
+          nodematch("country_name", diff = F)) + # homophily
+          nodematch("language", diff = F) # homophily
+
+```
+
+```{r}
+# Calculate models
+# Model 1: Country
+mod1_quotes <- ergm(network_quotes ~ edges + 
+                      twopath + 
+                      mutual +
+                      gwesp(decay=0, fixed=T) + 
+                      idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + 
+                      odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + 
+                      nodeifactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodeofactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodematch("actor_group", levels=c(2,4,5,7), diff = F) + 
+                      nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = F) +
+                      nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + 
+                      nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) +
+                      nodematch("country_name", levels=c(-1), diff = F),
+                      control=control.ergm(MCMLE.maxit=150, parallel=ntasks, parallel.type="PSOCK"), set.seed(123))
+
+# Model 2: Language
+mod2_quotes <- ergm(network_quotes ~ edges + 
+                      twopath + 
+                      mutual +
+                      gwesp(decay=0, fixed=T) + 
+                      idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + 
+                      odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + 
+                      nodeifactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodeofactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodematch("actor_group", levels=c(2,4,5,7), diff = F) + 
+                      nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = F) +
+                      nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + 
+                      nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) +
+                      nodematch("language", diff = F),
+                      control=control.ergm(MCMLE.maxit=150, parallel=ntasks, parallel.type="PSOCK"), set.seed(123))
+
+# Model 3: Country and language
+mod3_quotes <- ergm(network_quotes ~ edges + 
+                      twopath + 
+                      mutual + 
+                      gwesp(decay=0, fixed=T) + 
+                      idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + 
+                      odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + 
+                      nodeifactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodeofactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodematch("actor_group", levels=c(2,4,5,7), diff = F) + 
+                      nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = F) +
+                      nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + 
+                      nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) +
+                      nodematch("country_name", levels=c(-1), diff = F) + 
+                      nodematch("language", diff=F),
+                      control=control.ergm(MCMLE.maxit=150, parallel=ntasks, parallel.type="PSOCK"), set.seed(123))
+```
+
+```{r}
+# Model 1: Country
+mod1_replies <- ergm(network_replies ~ edges + 
+                      twopath + 
+                      mutual + 
+                      gwesp(decay=0, fixed=T) + 
+                      idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + 
+                      odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + 
+                      nodeifactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodeofactor("actor_group", levels=c(2,4,5,7)) + 
+                      nodematch("actor_group", levels=c(2,4,5,7), diff = T) + 
+                      nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = T) +
+                      nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + 
+                      nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) +
+                      nodematch("country_name", levels=c(-1), diff = F),
+                      control=control.ergm(MCMLE.maxit=150, parallel=ntasks, parallel.type="PSOCK"), set.seed(123))
+
+# Model 2: Language
+mod2_replies <- ergm(network_replies ~ edges + 
+                       twopath + 
+                       mutual +
+                       gwesp(decay=0, fixed=T) + 
+                       idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + 
+                       odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + 
+                       nodeifactor("actor_group", levels=c(2,4,5,7)) + 
+                       nodeofactor("actor_group", levels=c(2,4,5,7)) + 
+                       nodematch("actor_group", levels=c(2,4,5,7), diff = F) + 
+                       nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = F) +
+                       nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + 
+                       nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) +
+                       nodematch("language", diff = F), 
+                       control=control.ergm(MCMLE.maxit=150, parallel=ntasks, parallel.type="PSOCK"), set.seed(123))
+
+# Model 3: Country and Language
+mod3_replies <- ergm(network_replies ~ edges + 
+                       twopath + 
+                       mutual +
+                       gwesp(decay=0, fixed=T) + 
+                       idegree(d=c(1:3), by=NULL, homophily=FALSE, levels=NULL) + 
+                       odegree(d=c(1:5), by=NULL, homophily=FALSE, levels=NULL) + 
+                       nodeifactor("actor_group", levels=c(2,4,5,7)) + 
+                       nodeofactor("actor_group", levels=c(2,4,5,7)) + 
+                       nodematch("actor_group", levels=c(2,4,5,7), diff = T) + 
+                       nodematch("pol_leaning", levels=c(2:4,7,9:10), diff = T) +
+                       nodeifactor("pol_leaning", levels=c(2:4,7,9:10)) + 
+                       nodeofactor("pol_leaning", levels=c(2:4,7,9:10)) +
+                       nodematch("country_name", levels=c(-1), diff = F) + 
+                       nodematch("language", diff=F),
+                       control=control.ergm(MCMLE.maxit=150, parallel=ntasks, parallel.type="PSOCK"), set.seed(123))
+```
+
+
