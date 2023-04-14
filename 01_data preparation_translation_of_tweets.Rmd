@@ -1,0 +1,191 @@
+---
+title: "Translating all tweets into English with Google Translate API"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Translating tweets into English for topic modelling
+
+Please note that the following code is only for documentation. A translated df will be provided in an anonymized version (i.e. without information about user names, user ids or tweet ids) in the GitHub repository. 
+
+# Number of characters to be translated per week
+
+```{r}
+library(translateR)
+library(tidyverse)
+library(quanteda)
+library(lubridate)
+library(stringr)
+library(dplyr)
+library(googleLanguageR)
+```
+
+Translation is deliberately performed in chunks (per week) so that if translation does not work well, this will prevent using to many characters from the Google Translate API.
+
+# Select only non-english texts for translation
+```{r}
+w_list <- list(w14, w15, w16, w17, w18, w19, w20, w21, w22)
+w_ne_list <- lapply(w_list, function(x) x[x$lang != "en",])
+```
+
+## Create text IDs to match translated content to retweets
+```{r}
+w_tr_list <- list()
+
+w_tr_list <- lapply(w_list, function(x) {
+  x_tr <- as.data.frame(unique(x$text))
+  x_tr <- tibble::rowid_to_column(x_tr, "textid")
+  colnames(x_tr) <- c("textid", "text")
+  x$textid <- x_tr$textid[match(x$text, x_tr$text)]
+  return(x_tr)
+})
+```
+
+# Remove https, Emojis, Hashtags and mentions
+```{r}
+w_tr_cleaned <- lapply(w_tr_list, function(x) {
+  x$text_clean <- gsub("@","",x$text) # removes @ sign, but keeps usernames (for syntax)
+  x$text_clean <- gsub("#", "",x$text_clean) # removes hashtag sign
+  x$text_clean <- as.character(x$text_clean)
+  x$text_clean <- gsub(" ?http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "",x$text_clean)
+  x$text_clean <- iconv(x$text_clean, "UTF-8", "latin1", sub = "") # removes unicodes (emojis)
+  x$text_clean <- str_squish(x$text_clean)
+  return(x)
+})
+```
+
+```{r}
+# Create individual vector for each week
+# Input for translation has to be a vector
+
+w14vec <- as.vector(w_tr_cleaned[[1]]$text_clean)
+w15vec <- as.vector(w_tr_cleaned[[2]]$text_clean)
+w16vec <- as.vector(w_tr_cleaned[[3]]$text_clean)
+w17vec <- as.vector(w_tr_cleaned[[4]]$text_clean)
+w18vec <- as.vector(w_tr_cleaned[[5]]$text_clean)
+w19vec <- as.vector(w_tr_cleaned[[6]]$text_clean)
+w20vec <- as.vector(w_tr_cleaned[[7]]$text_clean)
+w21vec <- as.vector(w_tr_cleaned[[8]]$text_clean)
+w22vec <- as.vector(w_tr_cleaned[[9]]$text_clean)
+```
+
+# Translation
+
+```{r}
+# Auth
+# gl_auth("ANONYMIZED")
+
+# Translation (do each week individually - prevents using up API limits in case of errors)
+w14_translated <- gl_translate(w14_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base") #translation
+
+w14_translated$textid <- 0 # create Var for text id 
+w14_translated$textid <- w14_tr$textid[match(w14_translated$text, w14_tr$text_clean)] # match text id
+
+w15_translated <- gl_translate(w15_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w15_translated$textid <- 0
+w15_translated$textid <- w15_tr$textid[match(w15_translated$text, w15_tr$text_clean)]
+
+w16_translated <- gl_translate(w16_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w16_translated$textid <- 0
+w16_translated$textid <- w16_tr$textid[match(w16_translated$text, w16_tr$text_clean)]
+
+w17_translated <- gl_translate(w17_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w17_translated$textid <- 0
+w17_translated$textid <- w17_tr$textid[match(w17_translated$text, w17_tr$text_clean)]
+
+w18_translated <- gl_translate(w18_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "",
+                               model = "base")
+
+w18_translated$textid <- 0
+w18_translated$textid <- w18_tr$textid[match(w18_translated$text, w18_tr$text_clean)]
+
+w19_translated <- gl_translate(w19_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w19_translated$textid <- 0
+w19_translated$textid <- w19_tr$textid[match(w19_translated$text, w19_tr$text_clean)]
+
+w20_translated <- gl_translate(w20_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w20_translated$textid <- 0
+w20_translated$textid <- w20_tr$textid[match(w20_translated$text, w20_tr$text_clean)]
+
+w21_translated <- gl_translate(w21_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w21_translated$textid <- 0
+w21_translated$textid <- w21_tr$textid[match(w21_translated$text, w21_tr$text_clean)]
+
+w22_translated <- gl_translate(w22_vec, 
+                               target = "en",
+                               format = "text", 
+                               source = "", 
+                               model = "base")
+
+w22_translated$textid <- 0
+w22_translated$textid <- w22_tr$textid[match(w22_translated$text, w22_tr$text_clean)]
+```
+
+# Match translated text into full data set via text id
+
+```{r}
+translated_list <- list(w14_translated, w15_translated, w16_translated, w17_translated, w18_translated, w19_translated, w20_translated, w21_translated, w22_translated)
+
+
+# Use do.call and rbind to bind the individual data frames into one large data frame
+w_tr_df <- do.call(rbind, w_tr_list)
+
+# Create empty variable
+w_tr_df$translated_text <- ""
+
+# Match
+w_tr_df <- lapply(translated_list, function(x) {
+  x_translated_text <- x$translated_text
+  x_textid <- x$textid
+  df <- cbin(x_translated_text, x_textid)
+  colnames(x_tr) <- c("translated_text", "textid")
+  w_tr_df$translated <- x_tr$textid[match(x$text, x_tr$text)]
+  return(w_tr_df)
+})
+
+```
+
+
+
