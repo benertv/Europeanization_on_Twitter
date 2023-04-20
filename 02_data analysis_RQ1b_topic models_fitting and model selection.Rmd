@@ -1,0 +1,406 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data analysis RQ1b: Identifying topics in the #EP2019 with Structural Topic Modelling
+Please not that the anonymized data does not include the following variables: screen_name and status_id.
+
+```{r}
+library(quanteda)
+library(tm)
+library(stm)
+library(spacyr)
+library(dplyr)
+library(stringr)
+```
+
+# Preprocessing
+```{r}
+# load("E:/Dissertation/4 Daten und Auswertungen/Auswertungen/Data_Dissertation/01_tt_tr.RData")
+
+# as.character
+tt_tr$text_stm <- as.character(tt_tr$text_final)
+
+# to lower case
+tt_tr$text_stm <- tolower(tt_tr$text_stm)
+
+# remove punctuation (tm package)
+tt_tr$text_stm <- removePunctuation(tt_tr$text_stm,
+    preserve_intra_word_contractions = FALSE,
+    preserve_intra_word_dashes = TRUE,
+    ucp = FALSE)
+
+# tokenize (quanteda package)
+tt_tr$tokens <- tokens(tt_tr$text_stm)
+
+# Create helper data set for spacyR
+tt_tr$row_id <- seq.int(nrow(tt_tr)) # row number as docid
+id <- as.data.frame(as.character(tt_tr$row_id))
+text <- as.data.frame(tt_tr$text_stm)
+df_v2 <- cbind(id, text)
+colnames(df_v2) <- c("id", "text")
+df_v2$lemma <- ""
+
+# lemmatization (spacyR)
+spacy_initialize(model = "en_core_web_sm")
+df <- spacy_parse(structure(df_v2$text, names = df_v2$id),
+  lemma = TRUE, pos = FALSE) %>%
+  mutate(id = doc_id) %>%
+  group_by(id) %>%
+  summarize(lemma = paste(lemma, collapse = " "))
+
+df$id <- as.numeric(df$id)
+
+# Match meta data into lemmatized data via id
+df$text_stm <- tt_tr$text_stm[match(df$id, tt_tr$row_id)] # cleaned text
+df$screen_name <- tt_tr$screen_name[match(df$id, tt_tr$row_id)] # user screen_name (excluded for anonymized data set)
+df$yearday <- tt_tr$yearday[match(df$id, tt_tr$row_id)] # day of year 
+df$hashtags <- tt_tr$hashtags[match(df$id, tt_tr$row_id)] # hashtags
+df$lang <- tt_tr$lang[match(df$id, tt_tr$row_id)] # original tweet language (as identified by Twitter)
+df$actor_group <- tt_tr$actor_group[match(df$id, tt_tr$row_id)] # actor group (manual coding)
+df$scope <- tt_tr$scope[match(df$id, tt_tr$row_id)] # actor scope (manual coding)
+df$country_name <- tt_tr$country_name[match(df$id, tt_tr$row_id)] # country name as string (manual coding)
+df$status_id <- tt_tr$status_id[match(df$id, tt_tr$row_id)] # tweet status id (excluded for anonymized data set)
+df$pol_leaning <- tt_tr$pol_leaning[match(df$id, tt_tr$row_id)] # political leaning (manual coding)
+
+# Remove retweets (identical duplicate of original tweets, must therefore have the same topic)
+df$is_retweet <- tt_tr$is_retweet[match(df$id, tt_tr$row_id)]
+df_ot <- df[which(df$is_retweet==FALSE),] # df only with original tweets
+
+# remove stopwords, numbers, html with textProcessor function from STM package
+stm <- textProcessor(df_ot$lemma, metadata=df_ot, lowercase = T, removestopwords = T, removenumbers = T, removepunctuation = T, stem = F, striphtml = T) # unstemmed, keeping hashtags
+
+#Converting to quanteda-corpus object with original tweets only (no retweets)
+corpus_ot <- corpus(df_ot, text_field = "lemma", docid_field = "id")
+
+# Add document meta variables
+docvars(corpus_ot)$text_stm <- df_ot$text_stm
+docvars(corpus_ot)$screen_name <- df_ot$screen_name
+docvars(corpus_ot)$lang <- df_ot$lang
+docvars(corpus_ot)$actor_group <- df_ot$actor_group
+docvars(corpus_ot)$pol_leaning <- df_ot$pol_leaning
+
+# Tokens
+tokens_ot <- tokens(corpus_ot,
+  what = "word",
+  remove_punct = TRUE,
+  remove_symbols = TRUE,
+  remove_numbers = TRUE,
+  remove_url = TRUE,
+  remove_separators = TRUE,
+  split_hyphens = FALSE,
+  include_docvars = TRUE,
+  padding = FALSE)
+
+tokens_ot <- tokens_select(tokens_ot, pattern = stopwords("en"), selection = "remove")
+```
+
+# First Model: Keep hashtags
+Model 1: Hashtags kept, minimal pruning, stopwords removed, lemmatized, unstemmed.
+```{r}
+#require(quanteda)
+dfm_ot <- dfm(tokens_ot, remove_numbers = TRUE)
+dim(dfm_ot) # check dimensions
+
+# Pruning
+dfm_pruned <- dfm_ot %>% 
+  dfm_keep(min_nchar=3) %>% # exclude documents with less than 3 words
+  dfm_trim(min_docfreq=0.0001, mac_docfreq=0.90, docfreq_type = "prop") 
+dim(dfm_mod1) # check dimensions after pruning
+# min-pruning kicks out most tokens, therefore very careful min-pruning
+
+# Create STM-Object
+out <- convert(dfm_pruned, to="stm")
+vocab <- out$vocab
+
+# Save vocab as txt-document to identify specific stopwords for this debate
+vocab <- as.data.frame(vocab)
+write.table(vocab, "vocab.txt", row.names = F, col.names = F)
+
+# Clean debate-specific stopwords
+remove_mod1 <- read.table("remove vocab1.txt", header = FALSE, sep = "", dec = ".")
+remove_mod1 <- as.list(remove_mod1)
+remove_mod1 <- unlist(remove_mod1)
+tokens_ot_mod1 <- tokens_select(tokens_ot, pattern = remove_mod1, selection = "remove")
+
+# Remove hashtags as well for mod 2
+tokens_ot_mod2 <- tokens_select(tokens_ot_mod1, pattern = hashtags_list, selection = "remove")
+```
+
+# STM Model 1
+Model 1: Hashtags kept, minimal pruning, stopwords removed, lemmatized, unstemmed.
+```{r}
+#require(quanteda)
+dfm_mod1 <- dfm(tokens_ot_mod1, remove_numbers = TRUE)
+dim(dfm_mod1)
+
+# Pruning
+dfm_mod1 <- dfm_mod1 %>% 
+  dfm_keep(min_nchar=3) %>%
+  dfm_trim(min_docfreq=0.0001, mac_docfreq=0.90, docfreq_type = "prop") #0,1%min, 90%max
+dim(dfm_mod1)
+# min-pruning kicks out almost all tokens!
+
+# Create STM-Object
+out1 <- convert(dfm_mod1, to="stm")
+vocab1 <- out1$vocab
+```
+
+# Comnpare topic solutions with various K for model 1
+```{r}
+searchk1 <- searchK(out1$documents, out1$vocab, K = c(15,20,25,30,50,65), 
+                 prevalence = ~ s(week), data=out1$meta,
+                 set.seed(123), verbose=TRUE)
+
+print(search1$results)
+options(repr.plot.width=6, repr.plot.height=6)
+plot(storage1)
+```
+
+
+# STM Model 2
+Model 2: Hashtags removed, minimal pruning, stopwords removed, lemmatized, unstemmed.
+```{r}
+#require(quanteda)
+dfm_mod1 <- dfm(tokens_ot_mod2, remove_numbers = TRUE)
+dim(dfm_mod2)
+
+# Pruning
+dfm_mod2 <- dfm_mod1 %>% 
+  dfm_keep(min_nchar=3) %>%
+  dfm_trim(min_docfreq=0.0001, mac_docfreq=0.90, docfreq_type = "prop") 
+dim(dfm_mod2)
+
+# Create STM-Object
+out2 <- convert(dfm_mod2, to="stm")
+vocab2 <- out1$vocab
+```
+
+# Comnpare topic solutions with various K for model 2
+```{r}
+searchk2 <- searchK(out2$documents, out2$vocab, K = c(15,20,25,30,50,65), 
+                 prevalence = ~ s(week), data=out1$meta,
+                 set.seed(123), verbose=TRUE)
+
+print(search2$results)
+options(repr.plot.width=6, repr.plot.height=6)
+plot(storage2)
+```
+
+
+# Model 3
+Model 3 (same as one - hashtags kept - but additional stopwords cleaned that negatively affect topic solution in Model 1 and result in underfitting)
+
+```{r}
+# additional words to be cleaned 
+remove <- c("ep2019", "amp", "now", "can", "well", "just", "really", "may", "say", "one", "either", "via", "van", "also", "please", "lot", "let", "lets", "want", "use", "take")
+tokens_ot_mod3 <- tokens_select(tokens_ot_mod1, pattern=remove, selection="remove")
+
+#require(quanteda)
+dfm_mod3 <- dfm(tokens_ot_mod3, remove_numbers = TRUE)
+dim(dfm_mod3)
+
+# Pruning
+dfm_mod3 <- dfm_mod3 %>% 
+  dfm_keep(min_nchar=3) %>%
+  dfm_trim(min_docfreq=0.0001, mac_docfreq=0.90, docfreq_type = "prop") #0,1%min, 90%max
+dim(dfm_mod3)
+
+# Create STM-Object
+out3 <- convert(dfm_mod3, to="stm")
+vocab3 <- out3$vocab
+meta3 <- out3$meta
+meta3[is.na(meta3)] <- 0 # stm cannot handle missing values
+```
+
+# Comnpare topic solutions with various K for model 3
+```{r}
+searchk3 <- searchK(out3$documents, out3$vocab, K = c(15,20,25,30,50,65), 
+                 prevalence = ~ s(week), data=out3$meta,
+                 set.seed(123), verbose=TRUE)
+```
+
+# Model 4
+Model 4 (same as Model 2 - hashtags removed - but additional stopwords cleaned that negatively affect topic solution in Model 2)
+
+```{r}
+# additional words to be cleaned 
+remove <- c("ep2019", "amp", "now", "can", "well", "just", "really", "may", "say", "one", "either", "via", "van", "also", "please", "lot", "let", "lets", "want", "use", "take")
+tokens_ot_mod4 <- tokens_select(tokens_ot_mod2, pattern=remove, selection="remove")
+
+#require(quanteda)
+dfm_mod4 <- dfm(tokens_ot_mod4, remove_numbers = TRUE)
+dim(dfm_mod4)
+
+# Pruning
+dfm_mod4 <- dfm_mod3 %>% 
+  dfm_keep(min_nchar=3) %>%
+  dfm_trim(min_docfreq=0.0001, mac_docfreq=0.90, docfreq_type = "prop") #0,1%min, 90%max
+dim(dfm_mod4)
+
+# Create STM-Object
+out4 <- convert(dfm_mod4, to="stm")
+vocab4 <- out4$vocab
+meta4 <- out4$meta
+meta4[is.na(meta4)] <- 0 # stm cannot handle missing values
+```
+
+# Comnpare topic solutions with various K for model 4
+```{r}
+searchk4 <- searchK(out4$documents, out4$vocab, K = c(15,20,25,30,50,65), 
+                 prevalence = ~ s(week), data=out4$meta,
+                 set.seed(123), verbose=TRUE)
+```
+
+# Compare SearchK 1-4
+```{r}
+print(searchk1$results)
+options(repr.plot.width=6, repr.plot.height=6)
+plot(searchk1)
+
+print(searchk2$results)
+options(repr.plot.width=6, repr.plot.height=6)
+plot(searchk2)
+
+print(searchk3$results)
+options(repr.plot.width=6, repr.plot.height=6)
+plot(searchk3)
+
+print(searchk4$results)
+options(repr.plot.width=6, repr.plot.height=6)
+plot(searchk4)
+```
+
+Plots show that models with additional cleaning perform better. Thus, model 3 performs better than model 1 and model 4 performs better than model 2. Comparing semnatic coherence, heldout likelihood, and residuals for the different K, results indicate that either the K=20 or K=25 solutions should provide the most coherent models.Thus, four solutions will be fitted and compared for semantic coherence and exclusivity: 
+1) Model 3 with K=20
+2) Model 3 with K=25
+3) Model 4 with K=20
+4) Model 4 with K=25
+
+
+# Fitting Model 3
+
+```{r}
+# K=20
+model3_20 <- stm(documents=out3$documents, 
+                 vocab=out3$vocab, 
+                 prevalence = ~ s(week), 
+                 K=20,
+                 data=out3$meta, 
+                 set.seed(123), 
+                 init.type ="Spectral", 
+                 verbose=TRUE)
+
+# K=25
+model3_25 <- stm(documents=out3$documents, 
+                 vocab=out3$vocab, 
+                 prevalence = ~ s(week), 
+                 K=25,
+                 data=out3$meta, 
+                 set.seed(123), 
+                 init.type ="Spectral", 
+                 verbose=TRUE)
+
+```
+
+# Model 4
+
+```{r}
+# K=20
+model4_20 <- stm(documents=out4$documents, 
+                 vocab=out4$vocab, 
+                 prevalence = ~ s(week), 
+                 K=20,
+                 data=out4$meta, 
+                 set.seed(123), 
+                 init.type ="Spectral", 
+                 verbose=TRUE)
+
+# K=25
+model4_25 <- stm(documents=out4$documents, 
+                 vocab=out4$vocab, 
+                 prevalence = ~ s(week), 
+                 K=25,
+                 data=out4$meta, 
+                 set.seed(123), 
+                 init.type ="Spectral", 
+                 verbose=TRUE)
+```
+
+# Compare Semantic Coherence and Exclusvity for fitted models
+
+```{r}
+library(ggplot2)
+
+mod3_20_ExSem <- as.data.frame(cbind(c(1:20),
+                                     exclusivity(model3_20), 
+                                     semanticCoherence(model=model3_20, out3$documents), 
+                                     "Mod3a"))
+
+mod3_25_ExSem <- as.data.frame(cbind(c(1:25),
+                                     exclusivity(model3_25), 
+                                     semanticCoherence(model=model3_25, out3$documents), 
+                                     "Mod3b"))
+
+mod4_20_ExSem <- as.data.frame(cbind(c(1:20),
+                                     exclusivity(model4_20), 
+                                     semanticCoherence(model=model4_20, out4$documents), 
+                                     "Mod4a"))
+
+mod4_25_ExSem <- as.data.frame(cbind(c(1:25),
+                                     exclusivity(model4_25), 
+                                     semanticCoherence(model=model4_25, out4$documents), 
+                                     "Mod4b"))
+
+compare_ExSem <- rbind(mod3_20_ExSem, 
+                       mod3_25_ExSem, 
+                       mod4_20_ExSem, 
+                       mod4_25_ExSem)
+
+colnames(compare_ExSem) <- c("K","Exclusivity", "SemanticCoherence", "Model")
+
+compare_ExSem$Exclusivity <- as.numeric(as.character(compare_ExSem$Exclusivity))
+compare_ExSem$SemanticCoherence <- as.numeric(as.character(compare_ExSem$SemanticCoherence))
+
+options(repr.plot.width=7, repr.plot.height=7, repr.plot.res=100)
+
+ggplot(compare_ExSem, aes(SemanticCoherence, Exclusivity, color = Model)) + 
+  geom_point(size = 2, alpha = 0.7) + 
+  geom_text(aes(label=K), nudge_x=.05, nudge_y=.05)+
+  labs(x = "Semantic coherence",
+       y = "Exclusivity",
+       title = "Comparing exclusivity and semantic coherence")
+```
+
+Based on comparison of exclusivity and semnatic coherence Model 3-20 and 3-25 will be analyzed manually to check for human interpretability of topic solutions. 
+
+# Overview of topics for manual inspection
+```{r}
+plot.STM(model3_20, type = 'summary')
+plot.STM(model3_25, type = 'summary')
+```
+
+# Manual inspection for topic identification and labelling 
+
+```{r}
+# Most frequent terms
+labels_3_20 <- labelTopics(model3_20, 1:20)
+labels_3_25 <- labelTopics(model3_25, 1:25)
+
+# Print example documents for each topic
+thoughts_3_20 <- findThoughts(model3_20, 
+     texts = out3$meta$text_stm, # unprocessed documents
+     topics = 1:20,  n = 10) # topics and number of documents
+
+thoughts_3_25 <- findThoughts(model3_25, 
+     texts = out3$meta$text_stm, # unprocessed documents
+     topics = 1:25,  n = 10) # topics and number of documents
+```
+
+Based on manual inspection and interpretation, Model 3-25 provides the most coherent and meaningful topic solution.
