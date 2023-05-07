@@ -1,0 +1,258 @@
+---
+title: "Untitled"
+author: "Vivien Benert"
+date: "21 4 2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(igraph)
+library(descr)
+library(intergraph)
+```
+
+# Network Reduction for ERGMs
+
+ERGMs are computationally very expensive, even for small networks. Research points out (Stivala et al., 2020, p. 1) that networks should not exceed a few thousand nodes. Thus, reduction is necessary. In order to capture the center of the network based on theoretical consideration about networked public spheres, nodes will be excluded based on a combination of relevance (i.e. number of degree is equal to or higher than the median degree in the network) and regularity (i.e. participation in all stages of the campaign (campaign periods)).
+
+```{r}
+# Create network objects from dfs
+graph_mentions <- graph_from_data_frame(edgelist_mentions, directed = TRUE, vertices = unique_mentions)
+
+graph_retweets <- graph_from_data_frame(edgelist_retweets, directed = TRUE, vertices = unique_retweets)
+
+graph_quotes <- graph_from_data_frame(edgelist_quotes, directed = TRUE, vertices = unique_quotes)
+
+graph_replies <- graph_from_data_frame(edgelist_replies, directed = TRUE, vertices = unique_replies)
+```
+
+# Relevance criterium: Calculate mean degree for each network
+Relevance is measured in terms of popularity OR activity, meaning that only those will be kept that are above the avarage level of activity (i.e. outdegree) and/or popularity (i.e. indegree). The mean of the total degree is used as a combined indicator of relevance (i.e. nodes are either important due to their above average activity or their above average popularity in the debate).
+```{r}
+# Calculate degrees for each specific network
+V(graph_mentions)$degree_s  <- degree(graph_mentions, v=V(graph_mentions), mode="all", loops=F, normalized=F)
+
+V(graph_retweets)$degree_s  <- degree(graph_retweets, v=V(graph_retweets), mode="all", loops=F, normalized=F)
+
+V(graph_quotes)$degree_s  <- degree(graph_quotes, v=V(graph_quotes), mode="all", loops=F, normalized=F)
+
+V(graph_replies)$degree_s  <- degree(graph_replies, v=V(graph_replies), mode="all", loops=F, normalized=F)
+
+# Summary of degrees
+summary(V(graph_mentions)$degree_s) # Median=2, Mean=7,56
+
+summary(V(graph_retweets)$degree_s) # Median=1, Mean=5,08
+
+summary(V(graph_quotes)$degree_s) # Median=1, Mean=2,667
+
+summary(V(graph_replies)$degree_s) # Median=1, Mean=2,317
+```
+
+# Reduce networks
+Only keep nodes that have an above average total degree.
+```{r}
+graph_mentions_ergm <- induced_subgraph(graph_mentions, V(graph_mentions)$degree_s>=8)
+
+graph_retweets_ergm <- induced_subgraph(graph_retweets, V(graph_retweets)$degree_s>=6)
+
+graph_quotes_ergm <- induced_subgraph(graph_quotes, V(graph_quotes)$degree_s>=3)
+
+graph_replies_ergm <- induced_subgraph(graph_replies, V(graph_replies)$degree_s>=3)
+```
+
+# Create edgelist and nodelist for reduced graphs
+```{r}
+# Edgelists
+edgelist_mentions_ergm <- as_long_data_frame(graph_mentions_ergm)
+edgelist_retweets_ergm <- as_long_data_frame(graph_retweets_ergm)
+edgelist_quotes_ergm <- as_long_data_frame(graph_quotes_ergm)
+edgelist_replies_ergm <- as_long_data_frame(graph_replies_ergm)
+
+# Nodelists
+# Mentions
+a <- as.data.frame(edgelist_mentions_ergm$from_name)
+b <- as.data.frame(edgelist_mentions_ergm$to_name) 
+colnames(a) <- "x"
+colnames(b) <- "x"
+nodelist_mentions_ergm <- as.data.frame(rbind(a, b))
+nodelist_mentions_ergm <- unique(nodelist_mentions_ergm)
+
+# Retweets
+a <- as.data.frame(edgelist_retweets_ergm$from_name)
+b <- as.data.frame(edgelist_retweets_ergm$to_name) 
+colnames(a) <- "x"
+colnames(b) <- "x"
+nodelist_retweets_ergm <- as.data.frame(rbind(a, b))
+nodelist_retweets_ergm <- unique(nodelist_retweets_ergm)
+
+# Quotes
+a <- as.data.frame(edgelist_quotes_ergm$from_name)
+b <- as.data.frame(edgelist_quotes_ergm$to_name) 
+colnames(a) <- "x"
+colnames(b) <- "x"
+nodelist_quotes_ergm <- as.data.frame(rbind(a, b))
+nodelist_quotes_ergm <- unique(nodelist_quotes_ergm)
+
+# Replies
+a <- as.data.frame(edgelist_replies_ergm$from_name)
+b <- as.data.frame(edgelist_replies_ergm$to_name) 
+colnames(a) <- "x"
+colnames(b) <- "x"
+nodelist_replies_ergm <- as.data.frame(rbind(a, b))
+nodelist_replies_ergm <- unique(nodelist_replies_ergm)
+```
+
+# Regularity criteria: Select nodes that are relevant throughout the complete campaign period
+
+1. Early campaign phase: (yearday = 91:116)
+2. Hot campaign phase: (yearday = 117:142)
+3. Election and post-election phase: first election day until end of May (yearday = 143:150)
+
+```{r}
+# Create phase variable based on yearday
+edgelist_mentions_ergm$phase <- ifelse(edgelist_mentions_ergm$yearday>=91 & edgelist_mentions_ergm$yearday<=116, 1, 0)
+edgelist_mentions_ergm$phase <- ifelse(edgelist_mentions_ergm$yearday>=117 & edgelist_mentions_ergm$yearday<=142, 2, edgelist_mentions_ergm$phase)
+edgelist_mentions_ergm$phase <- ifelse(edgelist_mentions_ergm$yearday>=143, 3, edgelist_mentions_ergm$phase)
+
+edgelist_retweets_ergm$phase <- ifelse(edgelist_retweets_ergm$yearday>=91 & edgelist_retweets_ergm$yearday<=116, 1, 0)
+edgelist_retweets_ergm$phase <- ifelse(edgelist_retweets_ergm$yearday>=117 & edgelist_retweets_ergm$yearday<=142, 2, edgelist_retweets_ergm$phase)
+edgelist_retweets_ergm$phase <- ifelse(edgelist_retweets_ergm$yearday>=143, 3, edgelist_retweets_ergm$phase)
+
+edgelist_quotes_ergm$phase <- ifelse(edgelist_quotes_ergm$yearday>=91 & edgelist_quotes_ergm$yearday<=116, 1, 0)
+edgelist_quotes_ergm$phase <- ifelse(edgelist_quotes_ergm$yearday>=117 & edgelist_quotes_ergm$yearday<=142, 2, edgelist_quotes_ergm$phase)
+edgelist_quotes_ergm$phase <- ifelse(edgelist_quotes_ergm$yearday>=143, 3, edgelist_quotes_ergm$phase)
+
+edgelist_replies_ergm$phase <- ifelse(edgelist_replies_ergm$yearday>=91 & edgelist_replies_ergm$yearday<=116, 1, 0)
+edgelist_replies_ergm$phase <- ifelse(edgelist_replies_ergm$yearday>=117 & edgelist_replies_ergm$yearday<=142, 2, edgelist_replies_ergm$phase)
+edgelist_replies_ergm$phase <- ifelse(edgelist_replies_ergm$yearday>=143, 3, edgelist_replies_ergm$phase)
+```
+
+
+```{r}
+# Calculate number of phases in which node is present
+# Include sending and receiving nodes to make acknowledge activity and popularity criteria
+
+# Mention network
+x <- edgelist_mentions_ergm %>% 
+  count(from_name, phase)
+
+y <- edgelist_mentions_ergm %>% 
+  count(to_name, phase)
+
+colnames(x) <- c("name", "phase", "n")
+colnames(y) <- c("name", "phase", "n")
+z <- rbind(x,y)
+
+xyz <- z %>% 
+  count(name, phase)
+
+conti_mentions <- table(xyz$name) # gives number of phases in which node is present
+conti_mentions <- as.data.frame(conti_mentions)
+
+# Select nodes that are present in all three phases
+nodes_mentions_ergm <- subset(conti_mentions, Freq==3)
+
+# Retweet network
+x <- edgelist_retweets_ergm %>% 
+  count(from_name, phase)
+
+y <- edgelist_retweets_ergm %>% 
+  count(to_name, phase)
+
+colnames(x) <- c("name", "phase", "n")
+colnames(y) <- c("name", "phase", "n")
+z <- rbind(x,y)
+
+xyz <- z %>% 
+  count(name, phase)
+
+conti_retweets <- table(xyz$name) 
+conti_retweets <- as.data.frame(conti_retweets)
+
+nodes_retweets_ergm <- subset(conti_retweets, Freq==3)
+
+# Quote network
+x <- edgelist_quotes_ergm %>% 
+  count(from_name, phase)
+
+y <- edgelist_quotes_ergm %>% 
+  count(to_name, phase)
+
+colnames(x) <- c("name", "phase", "n")
+colnames(y) <- c("name", "phase", "n")
+z <- rbind(x,y)
+
+xyz <- z %>% 
+  count(name, phase)
+
+conti_quotes <- table(xyz$name) 
+conti_quotes <- as.data.frame(conti_quotes)
+
+nodes_quotes_ergm <- subset(conti_quotes, Freq==3)
+
+
+# Reply network
+x <- edgelist_replies_ergm %>% 
+  count(from_name, phase)
+
+y <- edgelist_replies_ergm %>% 
+  count(to_name, phase)
+
+colnames(x) <- c("name", "phase", "n")
+colnames(y) <- c("name", "phase", "n")
+z <- rbind(x,y)
+
+xyz <- z %>% 
+  count(name, phase)
+
+conti_replies <- table(xyz$name) 
+conti_replies <- as.data.frame(conti_replies)
+
+nodes_replies_ergm <- subset(conti_replies, Freq==3)
+```
+
+# Create induces subgraphs based on names of selected nodes
+```{r}
+# Mentions
+mentions <- as.character(nodes_mentions_ergm$Var1)
+subgraph_mentions_ergm <- induced_subgraph(graph_mentions_ergm, mentions)
+
+# Retweets 
+retweets <- as.character(nodes_retweets_ergm$Var1)
+subgraph_retweets_ergm <- induced_subgraph(graph_retweets_ergm, retweets)
+
+# Quotes 
+quotes <- as.character(nodes_quotes_ergm$Var1)
+subgraph_quotes_ergm <- induced_subgraph(graph_quotes_ergm, quotes)
+
+# Replies
+replies <- as.character(nodes_replies_ergm$Var1)
+subgraph_replies_ergm <- induced_subgraph(graph_replies_ergm, replies)
+
+```
+
+# Prepare for ERGM calaculation
+```{r}
+# Remove loops
+subgraph_mentions_ergm <- simplify(subgraph_mentions_ergm, remove.multiple = F, remove.loops = TRUE, edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+subgraph_retweets_ergm <- simplify(subgraph_retweets_ergm, remove.multiple = F, remove.loops = TRUE, edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+subgraph_quotes_ergm <- simplify(subgraph_quotes_ergm, remove.multiple = F, remove.loops = TRUE, edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+subgraph_replies_ergm <- simplify(subgraph_replies_ergm, remove.multiple = F, remove.loops = TRUE, edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+# Convert to network object
+# require(intergraph)
+network_mentions_ergm <- asNetwork(subgraph_mentions_ergm)
+network_retweets_ergm <- asNetwork(subgraph_retweets_ergm)
+network_quotes_ergm <- asNetwork(subgraph_quotes_ergm)
+network_replies_ergm <- asNetwork(subgraph_replies_ergm)
+```
