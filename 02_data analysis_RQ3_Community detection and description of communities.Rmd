@@ -1,0 +1,456 @@
+---
+author: "Vivien Benert"
+date: "30 3 2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(igraph)
+library(dplyr)
+```
+
+# Community detection
+There are various algorithms for community detection. For an overview see Stoltenberg et al. (2019).
+Direction of edges is not necessarily important for the analysis of conflict lines. In other words: It does not matter whather A started a conversation with B about a topic X, it is only important that A and B talk about topic X. Thus, tie direction can be neglected when using community detection to investigate the salience of conflict lines in online debates. Stoltenberg et al. (2019) find that the Louvain algorithm provides good results in terms of interpretability of topic solution and modularity.
+
+# Preparation for community detection
+Turn networks into undirected networks for community detection.
+```{r}
+# Mentions
+graph_mentions_collapse <- as.undirected(graph_mentions, mode = "collapse", edge.attr.comb = igraph_opt("edge.attr.comb")) # for community detection
+
+graph_mentions_mutual <- as.undirected(graph_mentions, mode = "mutual", edge.attr.comb = igraph_opt("edge.attr.comb")) # only mutual ties kept (for RQ2)
+
+# Retweets
+graph_retweets_collapse <- as.undirected(graph_retweets, mode = "collapse", edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+graph_retweets_mutual <- as.undirected(graph_retweets, mode = "mutual", edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+# Quotes
+graph_quotes_collapse <- as.undirected(graph_quotes, mode = "collapse", edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+graph_quotes_mutual <- as.undirected(graph_quotes, mode = "mutual", edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+# Replies
+graph_replies_collapse <- as.undirected(graph_replies, mode = "collapse", edge.attr.comb = igraph_opt("edge.attr.comb"))
+
+graph_replies_mutual <- as.undirected(graph_replies, mode = "mutual", edge.attr.comb = igraph_opt("edge.attr.comb"))
+```
+
+# Louvain community detection
+```{r}
+# Mentions
+louvain_mentions <- cluster_louvain(graph_mentions_collapse)
+V(graph_mentions)$louvain <- louvain_mentions$membership
+
+# Retweets
+louvain_retweets <- cluster_louvain(graph_retweets_collapse)
+V(graph_retweets)$louvain <- louvain_retweets$membership
+
+# Quotes
+louvain_quotes <- cluster_louvain(graph_quotes_collapse)
+V(graph_quotes)$louvain <- louvain_quotes$membership
+
+# Retweets
+louvain_replies <- cluster_louvain(graph_replies_collapse)
+V(graph_replies)$louvain <- louvain_replies$membership
+```
+
+# Community membership in nodelists matchen
+```{r}
+# Louvain
+x <- as.data.frame(louvain_replies$names)
+y <- as.data.frame(louvain_replies$membership)
+louvain_replies_df <- cbind(x,y)
+colnames(louvain_replies_df) <- c("name", "louvain")
+
+nodelist_df$louvain_replies <- 0
+nodelist_df$louvain_replies <- louvain_replies_df$louvain[match(nodelist_df$name, louvain_replies_df$name)]
+
+
+x <- as.data.frame(louvain_quotes$names)
+y <- as.data.frame(louvain_quotes$membership)
+louvain_quotes_df <- cbind(x,y)
+colnames(louvain_quotes_df) <- c("name", "louvain")
+
+nodelist_df$louvain_quotes <- 0
+nodelist_df$louvain_quotes <- louvain_quotes_df$louvain[match(nodelist_df$name, louvain_quotes_df$name)]
+
+
+x <- as.data.frame(louvain_retweets$names)
+y <- as.data.frame(louvain_retweets$membership)
+louvain_retweets_df <- cbind(x,y)
+colnames(louvain_retweets_df) <- c("name", "louvain")
+
+nodelist_df$louvain_retweets <- 0
+nodelist_df$louvain_retweets <- louvain_retweets_df$louvain[match(nodelist_df$name, louvain_retweets_df$name)]
+
+
+x <- as.data.frame(louvain_mentions$names)
+y <- as.data.frame(louvain_mentions$membership)
+louvain_mentions_df <- cbind(x,y)
+colnames(louvain_mentions_df) <- c("name", "louvain")
+
+nodelist_df$louvain_mentions <- 0
+nodelist_df$louvain_mentions <- louvain_mentions_df$louvain[match(nodelist_df$name, louvain_mentions_df$name)]
+```
+
+# Descriptive analysis of community structures
+```{r}
+sort(table(nodelist_df$louvain_mentions), decreasing=T)
+# Communities with more than 100 members
+# 381, 134, 13, 5, 136, 751, 277, 130, 742, 746, 129, 50, 284, 7, 696, 141, 132, 133, 729, 10, 428, 801, 244, 477, 416, 142, 166, 148, 135, 1100, 208, 829
+
+sort(table(nodelist_df$louvain_retweets), decreasing=T)
+# Communities with more than 100 members
+# 39, 48, 31, 10, 917, 21, 139, 569, 865, 835, 140, 111, 221, 8, 17, 24, 1023, 26, 260, 50, 945, 80, 836, 902, 201, 44, 9, 353, 845, 101, 89, 503, 196, 77, 96, 1170, 1080, 1267, 646, 455, 432, 968, 110, 933
+
+sort(table(nodelist_df$louvain_quotes), decreasing=T)
+# Communities with more than 100 members
+# 572, 261, 374, 1213, 1106, 676, 1108, 1337, 1022, 397, 838, 1144, 1358, 407, 693, 544, 740, 1292, 677, 1184, 334, 1177, 1023, 1215
+
+sort(table(nodelist_df$louvain_replies), decreasing=T)
+# Communities with more than 100 members
+# 1806, 1556, 1431, 1208, 1205, 1316, 930, 1206, 1546, 1178, 1298, 1698, 1611, 1053
+```
+
+# STM tt tr matchen
+```{r}
+# load tt_tr_stm object
+tt_tr_stm$louvain_mentions <- 0
+tt_tr_stm$louvain_mentions <- louvain_mentions_df$louvain[match(tt_tr_stm$screen_name, louvain_mentions_df$name)]
+
+tt_tr_stm$louvain_retweets <- 0
+tt_tr_stm$louvain_retweets <- louvain_retweets_df$louvain[match(tt_tr_stm$screen_name, louvain_retweets_df$name)]
+
+tt_tr_stm$louvain_quotes <- 0
+tt_tr_stm$louvain_quotes <- louvain_quotes_df$louvain[match(tt_tr_stm$screen_name, louvain_quotes_df$name)]
+
+tt_tr_stm$louvain_replies <- 0
+tt_tr_stm$louvain_replies <- louvain_replies_df$louvain[match(tt_tr_stm$screen_name, louvain_replies_df$name)]
+```
+
+# Subset data:
+All communities with at least 100 nodes for in depth analysis.
+```{r}
+names(nodelist_df)
+nodelist_louvain_mentions <- nodelist_df[which(nodelist_df$louvain_mentions==381 | nodelist_df$louvain_mentions==134 | nodelist_df$louvain_mentions==13 | nodelist_df$louvain_mentions==5 | nodelist_df$louvain_mentions==136 | nodelist_df$louvain_mentions==751 | nodelist_df$louvain_mentions==277 | nodelist_df$louvain_mentions==130 | nodelist_df$louvain_mentions==742 | nodelist_df$louvain_mentions==746 | nodelist_df$louvain_mentions==129 | nodelist_df$louvain_mentions==50 | nodelist_df$louvain_mentions==284 | nodelist_df$louvain_mentions==7 | nodelist_df$louvain_mentions==696 | nodelist_df$louvain_mentions==141 | nodelist_df$louvain_mentions==132 | nodelist_df$louvain_mentions==133 | nodelist_df$louvain_mentions==729 | nodelist_df$louvain_mentions==10 | nodelist_df$louvain_mentions==428 | nodelist_df$louvain_mentions==801 | nodelist_df$louvain_mentions==244 | nodelist_df$louvain_mentions==477 | nodelist_df$louvain_mentions==416 | nodelist_df$louvain_mentions==142 | nodelist_df$louvain_mentions==166 | nodelist_df$louvain_mentions==148 | nodelist_df$louvain_mentions==135 | nodelist_df$louvain_mentions==1100 | nodelist_df$louvain_mentions==208 | nodelist_df$louvain_mentions==829),]
+
+nodelist_louvain_retweets <- nodelist_df[which(nodelist_df$louvain_retweets==39| nodelist_df$louvain_retweets==48| nodelist_df$louvain_retweets==31| nodelist_df$louvain_retweets==10| nodelist_df$louvain_retweets==917| nodelist_df$louvain_retweets==21| nodelist_df$louvain_retweets==139| nodelist_df$louvain_retweets==569| nodelist_df$louvain_retweets==865| nodelist_df$louvain_retweets==835| nodelist_df$louvain_retweets==140| nodelist_df$louvain_retweets==111| nodelist_df$louvain_retweets==221| nodelist_df$louvain_retweets==8| nodelist_df$louvain_retweets==17| nodelist_df$louvain_retweets==24| nodelist_df$louvain_retweets==1023| nodelist_df$louvain_retweets==26| nodelist_df$louvain_retweets==260| nodelist_df$louvain_retweets==50| nodelist_df$louvain_retweets==945| nodelist_df$louvain_retweets==80| nodelist_df$louvain_retweets==836| nodelist_df$louvain_retweets==902| nodelist_df$louvain_retweets==201| nodelist_df$louvain_retweets==44| nodelist_df$louvain_retweets==9| nodelist_df$louvain_retweets==353| nodelist_df$louvain_retweets==845| nodelist_df$louvain_retweets==101| nodelist_df$louvain_retweets==89| nodelist_df$louvain_retweets==503| nodelist_df$louvain_retweets==196| nodelist_df$louvain_retweets==77| nodelist_df$louvain_retweets==96| nodelist_df$louvain_retweets==1170| nodelist_df$louvain_retweets==1080| nodelist_df$louvain_retweets==1267| nodelist_df$louvain_retweets==646| nodelist_df$louvain_retweets==455| nodelist_df$louvain_retweets==432| nodelist_df$louvain_retweets==968| nodelist_df$louvain_retweets==110| nodelist_df$louvain_retweets==933),]
+
+nodelist_louvain_quotes <- nodelist_df[which(nodelist_df$louvain_quotes==572| nodelist_df$louvain_quotes==261| nodelist_df$louvain_quotes==374| nodelist_df$louvain_quotes==1213| nodelist_df$louvain_quotes==1106| nodelist_df$louvain_quotes==676| nodelist_df$louvain_quotes==1108| nodelist_df$louvain_quotes==1337| nodelist_df$louvain_quotes==1022| nodelist_df$louvain_quotes==397| nodelist_df$louvain_quotes==838| nodelist_df$louvain_quotes==1144| nodelist_df$louvain_quotes==1358| nodelist_df$louvain_quotes==407| nodelist_df$louvain_quotes==693| nodelist_df$louvain_quotes==544| nodelist_df$louvain_quotes==740| nodelist_df$louvain_quotes==1292| nodelist_df$louvain_quotes==677| nodelist_df$louvain_quotes==1184| nodelist_df$louvain_quotes==334| nodelist_df$louvain_quotes==1177| nodelist_df$louvain_quotes==1023| nodelist_df$louvain_quotes==1215),]
+
+nodelist_louvain_replies <- nodelist_df[which(nodelist_df$louvain_replies==1806| nodelist_df$louvain_replies==1556| nodelist_df$louvain_replies==1431| nodelist_df$louvain_replies==1208| nodelist_df$louvain_replies==1205| nodelist_df$louvain_replies==1316| nodelist_df$louvain_replies==930| nodelist_df$louvain_replies==1206| nodelist_df$louvain_replies==1546| nodelist_df$louvain_replies==1178| nodelist_df$louvain_replies==1298| nodelist_df$louvain_replies==1698| nodelist_df$louvain_replies==1611| nodelist_df$louvain_replies==1053),]
+```
+
+# Recode 0 to NA for descritive anaylsis
+```{r}
+# Mentions Louvain
+which(nodelist_louvain_mentions$actor_group==0)
+nodelist_louvain_mentions$actor_group <- ifelse(nodelist_louvain_mentions$actor_group==0, NA, nodelist_louvain_mentions$actor_group)
+
+which(nodelist_louvain_mentions$pol_leaning==0)
+nodelist_louvain_mentions$pol_leaning <- ifelse(nodelist_louvain_mentions$pol_leaning==0, NA, nodelist_louvain_mentions$pol_leaning)
+
+which(nodelist_louvain_mentions$pol_act==0)
+nodelist_louvain_mentions$pol_act <- ifelse(nodelist_louvain_mentions$pol_act==0, NA, nodelist_louvain_mentions$pol_act)
+
+which(nodelist_louvain_mentions$med_act==0)
+nodelist_louvain_mentions$med_act <- ifelse(nodelist_louvain_mentions$med_act==0, NA, nodelist_louvain_mentions$med_act)
+
+which(nodelist_louvain_mentions$civ_act==0)
+nodelist_louvain_mentions$civ_act <- ifelse(nodelist_louvain_mentions$civ_act==0, NA, nodelist_louvain_mentions$civ_act)
+
+which(nodelist_louvain_mentions$scope==0)
+nodelist_louvain_mentions$scope <- ifelse(nodelist_louvain_mentions$scope==0, NA, nodelist_louvain_mentions$scope)
+
+# Retweets Louvain
+which(nodelist_louvain_retweets$actor_group==0)
+nodelist_louvain_retweets$actor_group <- ifelse(nodelist_louvain_retweets$actor_group==0, NA, nodelist_louvain_retweets$actor_group)
+
+which(nodelist_louvain_retweets$pol_leaning==0)
+nodelist_louvain_retweets$pol_leaning <- ifelse(nodelist_louvain_retweets$pol_leaning==0, NA, nodelist_louvain_retweets$pol_leaning)
+
+which(nodelist_louvain_retweets$pol_act==0)
+nodelist_louvain_retweets$pol_act <- ifelse(nodelist_louvain_retweets$pol_act==0, NA, nodelist_louvain_retweets$pol_act)
+
+which(nodelist_louvain_retweets$med_act==0)
+nodelist_louvain_retweets$med_act <- ifelse(nodelist_louvain_retweets$med_act==0, NA, nodelist_louvain_retweets$med_act)
+
+which(nodelist_louvain_retweets$civ_act==0)
+nodelist_louvain_retweets$civ_act <- ifelse(nodelist_louvain_retweets$civ_act==0, NA, nodelist_louvain_retweets$civ_act)
+
+which(nodelist_louvain_retweets$scope==0)
+nodelist_louvain_retweets$scope <- ifelse(nodelist_louvain_retweets$scope==0, NA, nodelist_louvain_retweets$scope)
+
+# Quotes
+which(nodelist_louvain_quotes$actor_group==0)
+nodelist_louvain_quotes$actor_group <- ifelse(nodelist_louvain_quotes$actor_group==0, NA, nodelist_louvain_quotes$actor_group)
+
+which(nodelist_louvain_quotes$pol_leaning==0)
+nodelist_louvain_quotes$pol_leaning <- ifelse(nodelist_louvain_quotes$pol_leaning==0, NA, nodelist_louvain_quotes$pol_leaning)
+
+which(nodelist_louvain_quotes$pol_act==0)
+nodelist_louvain_quotes$pol_act <- ifelse(nodelist_louvain_quotes$pol_act==0, NA, nodelist_louvain_quotes$pol_act)
+
+which(nodelist_louvain_quotes$med_act==0)
+nodelist_louvain_quotes$med_act <- ifelse(nodelist_louvain_quotes$med_act==0, NA, nodelist_louvain_quotes$med_act)
+
+which(nodelist_louvain_quotes$civ_act==0)
+nodelist_louvain_quotes$civ_act <- ifelse(nodelist_louvain_quotes$civ_act==0, NA, nodelist_louvain_quotes$civ_act)
+
+which(nodelist_louvain_quotes$scope==0)
+nodelist_louvain_quotes$scope <- ifelse(nodelist_louvain_quotes$scope==0, NA, nodelist_louvain_quotes$scope)
+
+# Replies
+which(nodelist_louvain_replies$actor_group==0)
+nodelist_louvain_replies$actor_group <- ifelse(nodelist_louvain_replies$actor_group==0, NA, nodelist_louvain_replies$actor_group)
+
+which(nodelist_louvain_replies$pol_leaning==0)
+nodelist_louvain_replies$pol_leaning <- ifelse(nodelist_louvain_replies$pol_leaning==0, NA, nodelist_louvain_replies$pol_leaning)
+
+which(nodelist_louvain_replies$pol_act==0)
+nodelist_louvain_replies$pol_act <- ifelse(nodelist_louvain_replies$pol_act==0, NA, nodelist_louvain_replies$pol_act)
+
+which(nodelist_louvain_replies$med_act==0)
+nodelist_louvain_replies$med_act <- ifelse(nodelist_louvain_replies$med_act==0, NA, nodelist_louvain_replies$med_act)
+
+which(nodelist_louvain_replies$civ_act==0)
+nodelist_louvain_replies$civ_act <- ifelse(nodelist_louvain_replies$civ_act==0, NA, nodelist_louvain_replies$civ_act)
+
+which(nodelist_louvain_replies$scope==0)
+nodelist_louvain_replies$scope <- ifelse(nodelist_louvain_replies$scope==0, NA, nodelist_louvain_replies$scope)
+```
+
+# Description of communities: cross tables
+```{r}
+library(descr)
+library(dplyr)
+```
+
+```{r}
+# Mentions
+ct <- descr::CrossTable(nodelist_louvain_mentions$actor_group, nodelist_louvain_mentions$louvain_mentions, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=F, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+ct_mtrx <- descr:::CreateNewTab(ct)
+write.csv2(ct_mtrx,"FF3_deskr_actor group distribution in largest mention communities_LOUVAIN.csv")
+
+ct <- descr::CrossTable(nodelist_louvain_mentions$pol_leaning, nodelist_louvain_mentions$louvain_mentions, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=F, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+ct_mtrx <- descr:::CreateNewTab(ct)
+write.csv2(ct_mtrx,"FF3_deskr_pol leaning distribution in largest mentions communities_LOUVAIN.csv")
+
+ct <- descr::CrossTable(nodelist_louvain_mentions$pol_act, nodelist_louvain_mentions$louvain_mentions, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=F, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+ct_mtrx <- descr:::CreateNewTab(ct)
+write.csv2(ct_mtrx,"FF3_deskr_political actor distribution in largest mentions communities_LOUVAIN.csv")
+
+ct <- descr::CrossTable(nodelist_louvain_mentions$civ_act, nodelist_louvain_mentions$louvain_mentions, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=F, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+ct_mtrx <- descr:::CreateNewTab(ct)
+write.csv2(ct_mtrx,"FF3_deskr_civil society distribution in largest mentions communities_LOUVAIN.csv")
+
+ct <- descr::CrossTable(nodelist_louvain_mentions$med_act, nodelist_louvain_mentions$louvain_mentions, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=F, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+ct_mtrx <- descr:::CreateNewTab(ct)
+write.csv2(ct_mtrx,"FF3_deskr_media actor distribution in largest mentions communities_LOUVAIN.csv")
+
+# Repeat for other networks
+```
+
+# STM distribution in communities
+```{r}
+# Mentions Louvain
+x <- tt_tr_stm %>% group_by(louvain_mentions)
+
+# Nochmal Summen pro Akteur aus tt_tr_stm (um retweets zu berücksichtigen)
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25)
+)
+
+y$total <- rowSums(y[, c(2:26)]) # row sum = number of Tweets!
+# Jede Spalte durch Anzahl der Tweets teilen, dann nochmal rosum=100!
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)]) # passt!
+colnames(y) <- c("community","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+stm_mentions_louvain <- cbind(y, z)
+```
+
+```{r}
+# Retweets Louvain
+x <- tt_tr_stm %>% group_by(louvain_retweets)
+
+# Nochmal Summen pro Akteur aus tt_tr_stm (um retweets zu berücksichtigen)
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25)
+)
+
+y$total <- rowSums(y[, c(2:26)]) # row sum = number of Tweets!
+# Jede Spalte durch Anzahl der Tweets teilen, dann nochmal rosum=100!
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)]) # passt!
+colnames(y) <- c("community","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+stm_retweets_louvain <- cbind(y, z)
+```
+
+```{r}
+# Quotes Louvain
+x <- tt_tr_stm %>% group_by(louvain_quotes)
+
+# Nochmal Summen pro Akteur aus tt_tr_stm (um retweets zu berücksichtigen)
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25)
+)
+
+y$total <- rowSums(y[, c(2:26)]) # row sum = number of Tweets!
+# Jede Spalte durch Anzahl der Tweets teilen, dann nochmal rosum=100!
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)]) # passt!
+colnames(y) <- c("community","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+stm_quotes_louvain <- cbind(y, z)
+```
+
+```{r}
+# Replies Louvain
+x <- tt_tr_stm %>% group_by(louvain_replies)
+
+# Nochmal Summen pro Akteur aus tt_tr_stm (um retweets zu berücksichtigen)
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25)
+)
+
+y$total <- rowSums(y[, c(2:26)]) # row sum = number of Tweets!
+# Jede Spalte durch Anzahl der Tweets teilen, dann nochmal rosum=100!
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)]) # passt!
+colnames(y) <- c("community","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+stm_replies_louvain <- cbind(y, z)
+```
+
+# Density of communities
+```{r}
+# Check community is set as node attribute
+vertex_attr(graph_mentions) #yes
+
+# List of objects in environment to call
+objects <- ls()
+objects <- objects[1:77]
+
+# Create empty data frame
+community_sizes <- data.frame(matrix(ncol=4, nrow=0))
+colnames(community_sizes) <- c("community", "nodes", "edges", "density")
+
+for (i in 1:length(objects)) {
+  x <- get(objects[i], envir = as.environment(-1), mode = "any",
+    inherits = FALSE)
+  a <- gorder(x)
+  b <- gsize(x)
+  c <- edge_density(x)
+  new <- data.frame("community"= i, "nodes" = a, "edges" = b, "density" = c)
+  community_sizes <- rbind(community_sizes, new)
+}
+
+y <- as.data.frame(objects)
+community_sizes <- cbind(y, community_sizes)
+```
