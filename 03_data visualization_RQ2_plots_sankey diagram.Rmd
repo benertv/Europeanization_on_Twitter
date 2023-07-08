@@ -1,0 +1,542 @@
+---
+title: "Sankey plot for RQ 2"
+author: "Vivien Benert"
+date: '2022-10-21'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Load packages
+library(ggsankey)
+library(ggplot2)
+
+# Data used:
+# edgelists_data
+```
+
+```{r}
+# Create data frame with all needed sending actors
+
+#MENTIONS
+edgelist_mentions_from_EUciv <- edgelist_mentions[which(
+  edgelist_mentions$from_actor_group==30 & # 30=civil society
+      (edgelist_mentions$from_scope==2 | # scope 2 and 3=European
+         edgelist_mentions$from_scope==3) &
+      (edgelist_mentions$to_scope==1 | # scopes 1,2,3 =to all national and European actors
+         edgelist_mentions$to_scope==2 |
+         edgelist_mentions$to_scope==3)
+    ),]
+
+edgelist_mentions_from_natciv <- edgelist_mentions[which(
+  edgelist_mentions$from_actor_group==30 & # 30=civil society
+      edgelist_mentions$from_scope==1 & # scope 1=national
+      (edgelist_mentions$to_scope==1 | # to scope 1,2,3=to all national and European actors
+         edgelist_mentions$to_scope==2 |
+         edgelist_mentions$to_scope==3)
+    ),]
+
+edgelist_mentions_from_citizens <- edgelist_mentions[which(
+  edgelist_mentions$from_actor_group==60 & # 60=citizens (always national scope!)
+    (edgelist_mentions$to_scope==1 | # to scope 1,2,3=to all national and European actors
+      edgelist_mentions$to_scope==2 |
+         edgelist_mentions$to_scope==3)
+    ),]
+
+edgelist_mentions_from_EUmed <- edgelist_mentions[which(
+  edgelist_mentions$from_actor_group==40 & #40=media
+      (edgelist_mentions$from_scope==2 | # scope 2,3=European
+         edgelist_mentions$from_scope==3) &
+      (edgelist_mentions$to_scope==1 | # to scope 1,2,3=to all national and European actors
+         edgelist_mentions$to_scope==2 |
+         edgelist_mentions$to_scope==3)
+    ),]
+
+edgelist_mentions_from_natmed <- edgelist_mentions[which(
+  edgelist_mentions$from_actor_group==40 & # 40=media
+      edgelist_mentions$from_scope==1 & # scope 1=national
+      (edgelist_mentions$to_scope==1 | # to scope 1,2,3=to all national and European actors
+         edgelist_mentions$to_scope==2 |
+         edgelist_mentions$to_scope==3)
+    ),]
+
+#RETWEETS
+edgelist_retweets_from_EUciv <- edgelist_retweets[which(
+  edgelist_retweets$from_actor_group==30 & 
+      (edgelist_retweets$from_scope==2 | 
+         edgelist_retweets$from_scope==3) &
+      (edgelist_retweets$to_scope==1 | 
+         edgelist_retweets$to_scope==2 |
+         edgelist_retweets$to_scope==3)
+    ),]
+
+edgelist_retweets_from_natciv <- edgelist_retweets[which(
+  edgelist_retweets$from_actor_group==30 & 
+      edgelist_retweets$from_scope==1 &
+      (edgelist_retweets$to_scope==1 | 
+         edgelist_retweets$to_scope==2 |
+         edgelist_retweets$to_scope==3)
+    ),]
+
+edgelist_retweets_from_citizens <- edgelist_retweets[which(
+  edgelist_retweets$from_actor_group==60 & 
+    (edgelist_retweets$to_scope==1 | 
+      edgelist_retweets$to_scope==2 |
+         edgelist_retweets$to_scope==3)
+    ),]
+
+edgelist_retweets_from_EUmed <- edgelist_retweets[which(
+  edgelist_retweets$from_actor_group==40 & 
+      (edgelist_retweets$from_scope==2 | 
+         edgelist_retweets$from_scope==3) &
+      (edgelist_retweets$to_scope==1 | 
+         edgelist_retweets$to_scope==2 |
+         edgelist_retweets$to_scope==3)
+    ),]
+
+edgelist_retweets_from_natmed <- edgelist_retweets[which(
+  edgelist_retweets$from_actor_group==40 & 
+      edgelist_retweets$from_scope==1 &
+      (edgelist_retweets$to_scope==1 | 
+         edgelist_retweets$to_scope==2 |
+         edgelist_retweets$to_scope==3)
+    ),]
+
+# QUOTES
+edgelist_quotes_from_EUciv <- edgelist_quotes[which(
+  edgelist_quotes$from_actor_group==30 & 
+      (edgelist_quotes$from_scope==2 | 
+         edgelist_quotes$from_scope==3) &
+      (edgelist_quotes$to_scope==1 | 
+         edgelist_quotes$to_scope==2 |
+         edgelist_quotes$to_scope==3)
+    ),]
+
+edgelist_quotes_from_natciv <- edgelist_quotes[which(
+  edgelist_quotes$from_actor_group==30 & 
+      edgelist_quotes$from_scope==1 &
+      (edgelist_quotes$to_scope==1 | 
+         edgelist_quotes$to_scope==2 |
+         edgelist_quotes$to_scope==3)
+    ),]
+
+edgelist_quotes_from_citizens <- edgelist_quotes[which(
+  edgelist_quotes$from_actor_group==60 & 
+    (edgelist_quotes$to_scope==1 | 
+      edgelist_quotes$to_scope==2 |
+         edgelist_quotes$to_scope==3)
+    ),]
+
+edgelist_quotes_from_EUmed <- edgelist_quotes[which(
+  edgelist_quotes$from_actor_group==40 & 
+      (edgelist_quotes$from_scope==2 | 
+         edgelist_quotes$from_scope==3) &
+      (edgelist_quotes$to_scope==1 | 
+         edgelist_quotes$to_scope==2 |
+         edgelist_quotes$to_scope==3)
+    ),]
+
+edgelist_quotes_from_natmed <- edgelist_quotes[which(
+  edgelist_quotes$from_actor_group==40 & 
+      edgelist_quotes$from_scope==1 &
+      (edgelist_quotes$to_scope==1 | 
+         edgelist_quotes$to_scope==2 |
+         edgelist_quotes$to_scope==3)
+    ),]
+
+#REPLIES
+edgelist_replies_from_EUciv <- edgelist_replies[which(
+  edgelist_replies$from_actor_group==30 & 
+      (edgelist_replies$from_scope==2 | 
+         edgelist_replies$from_scope==3) &
+      (edgelist_replies$to_scope==1 | 
+         edgelist_replies$to_scope==2 |
+         edgelist_replies$to_scope==3)
+    ),]
+
+edgelist_replies_from_natciv <- edgelist_replies[which(
+  edgelist_replies$from_actor_group==30 & 
+      edgelist_replies$from_scope==1 &
+      (edgelist_replies$to_scope==1 | 
+         edgelist_replies$to_scope==2 |
+         edgelist_replies$to_scope==3)
+    ),]
+
+edgelist_replies_from_citizens <- edgelist_replies[which(
+  edgelist_replies$from_actor_group==60 & 
+    (edgelist_replies$to_scope==1 | 
+      edgelist_replies$to_scope==2 |
+         edgelist_replies$to_scope==3)
+    ),]
+
+edgelist_replies_from_EUmed <- edgelist_replies[which(
+  edgelist_replies$from_actor_group==40 & 
+      (edgelist_replies$from_scope==2 | 
+         edgelist_replies$from_scope==3) &
+      (edgelist_replies$to_scope==1 | 
+         edgelist_replies$to_scope==2 |
+         edgelist_replies$to_scope==3)
+    ),]
+
+edgelist_replies_from_natmed <- edgelist_replies[which(
+  edgelist_replies$from_actor_group==40 & 
+      edgelist_replies$from_scope==1 &
+      (edgelist_replies$to_scope==1 | 
+         edgelist_replies$to_scope==2 |
+         edgelist_replies$to_scope==3)
+    ),]
+
+```
+
+# Create Variable to identify actor group and scope in one variable
+```{r}
+edgelist_mentions_from_EUpol$act_scope <- "European politicians"
+edgelist_mentions_from_natpol$act_scope <- "national politicians"
+edgelist_mentions_from_EUciv$act_scope <- "European civil society"
+edgelist_mentions_from_natciv$act_scope <- "national civil society"
+edgelist_mentions_from_citizens$act_scope <- "citizens"
+edgelist_mentions_from_EUmed$act_scope <- "European media"
+edgelist_mentions_from_natmed$act_scope <- "national media"
+
+edgelist_retweets_from_EUpol$act_scope <- "European politicians"
+edgelist_retweets_from_natpol$act_scope <- "national politicians"
+edgelist_retweets_from_EUciv$act_scope <- "European civil society"
+edgelist_retweets_from_natciv$act_scope <- "national civil society"
+edgelist_retweets_from_citizens$act_scope <- "citizens"
+edgelist_retweets_from_EUmed$act_scope <- "European media"
+edgelist_retweets_from_natmed$act_scope <- "national media"
+
+edgelist_quotes_from_EUpol$act_scope <- "European politicians"
+edgelist_quotes_from_natpol$act_scope <- "national politicians"
+edgelist_quotes_from_EUciv$act_scope <- "European civil society"
+edgelist_quotes_from_natciv$act_scope <- "national civil society"
+edgelist_quotes_from_citizens$act_scope <- "citizens"
+edgelist_quotes_from_EUmed$act_scope <- "European media"
+edgelist_quotes_from_natmed$act_scope <- "national media"
+
+edgelist_replies_from_EUpol$act_scope <- "European politicians"
+edgelist_replies_from_natpol$act_scope <- "national politicians"
+edgelist_replies_from_EUciv$act_scope <- "European civil society"
+edgelist_replies_from_natciv$act_scope <- "national civil society"
+edgelist_replies_from_citizens$act_scope <- "citizens"
+edgelist_replies_from_EUmed$act_scope <- "European media"
+edgelist_replies_from_natmed$act_scope <- "national media"
+```
+
+# Bind dfs together per edgetype
+```{r}
+categories <- c("mentions", "retweets", "quotes", "replies") 
+nodes <- c("EUpol", "natpol", "EUciv", "natciv", "EUmed", "natmed", "citizens")
+
+for (category in categories) {
+  combined_variable <- NULL
+  for (node in nodes) {
+    edgelist_variable <- get(paste0("edgelist_", category, "from", node))
+    combined_variable <- rbind(combined_variable, edgelist_variable)
+  }
+  assign(paste0("edgelist_", category, "_ff2plot"), combined_variable)
+}
+```
+
+# Create same Variable for receiving actor in this df
+```{r}
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==10 & 
+      (edgelist_mentions_ff2plot$to_scope==2 | 
+         edgelist_mentions_ff2plot$to_scope==3), 
+  "European politicians", 
+  "")
+
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==10 & 
+      edgelist_mentions_ff2plot$to_scope==1, 
+  "national politicians",
+  edgelist_mentions_ff2plot$to_act_scope)
+
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==30 & 
+      (edgelist_mentions_ff2plot$to_scope==2 | 
+         edgelist_mentions_ff2plot$to_scope==3), 
+  "European civil society", 
+  edgelist_mentions_ff2plot$to_act_scope)
+
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==30 & 
+      edgelist_mentions_ff2plot$to_scope==1, 
+  "national civil society",
+  edgelist_mentions_ff2plot$to_act_scope)
+
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==40 & 
+      (edgelist_mentions_ff2plot$to_scope==2 | 
+         edgelist_mentions_ff2plot$to_scope==3), 
+  "European media", 
+  edgelist_mentions_ff2plot$to_act_scope)
+
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==40 & 
+      edgelist_mentions_ff2plot$to_scope==1, 
+  "national media",
+  edgelist_mentions_ff2plot$to_act_scope)
+
+edgelist_mentions_ff2plot$to_act_scope <- ifelse(
+  edgelist_mentions_ff2plot$to_actor_group==60,
+  "citizens",
+  edgelist_mentions_ff2plot$to_act_scope)
+
+```
+
+```{r}
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==10 & 
+      (edgelist_retweets_ff2plot$to_scope==2 | 
+         edgelist_retweets_ff2plot$to_scope==3), 
+  "European politicians", 
+  "")
+
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==10 & 
+      edgelist_retweets_ff2plot$to_scope==1, 
+  "national politicians",
+  edgelist_retweets_ff2plot$to_act_scope)
+
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==30 & 
+      (edgelist_retweets_ff2plot$to_scope==2 | 
+         edgelist_retweets_ff2plot$to_scope==3), 
+  "European civil society", 
+  edgelist_retweets_ff2plot$to_act_scope)
+
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==30 & 
+      edgelist_retweets_ff2plot$to_scope==1, 
+  "national civil society",
+  edgelist_retweets_ff2plot$to_act_scope)
+
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==40 & 
+      (edgelist_retweets_ff2plot$to_scope==2 | 
+         edgelist_retweets_ff2plot$to_scope==3), 
+  "European media", 
+  edgelist_retweets_ff2plot$to_act_scope)
+
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==40 & 
+      edgelist_retweets_ff2plot$to_scope==1, 
+  "national media",
+  edgelist_retweets_ff2plot$to_act_scope)
+
+edgelist_retweets_ff2plot$to_act_scope <- ifelse(
+  edgelist_retweets_ff2plot$to_actor_group==60,
+  "citizens",
+  edgelist_retweets_ff2plot$to_act_scope)
+```
+
+```{r}
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==10 & 
+      (edgelist_quotes_ff2plot$to_scope==2 | 
+         edgelist_quotes_ff2plot$to_scope==3), 
+  "European politicians", 
+  "")
+
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==10 & 
+      edgelist_quotes_ff2plot$to_scope==1, 
+  "national politicians",
+  edgelist_quotes_ff2plot$to_act_scope)
+
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==30 & 
+      (edgelist_quotes_ff2plot$to_scope==2 | 
+         edgelist_quotes_ff2plot$to_scope==3), 
+  "European civil society", 
+  edgelist_quotes_ff2plot$to_act_scope)
+
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==30 & 
+      edgelist_quotes_ff2plot$to_scope==1, 
+  "national civil society",
+  edgelist_quotes_ff2plot$to_act_scope)
+
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==40 & 
+      (edgelist_quotes_ff2plot$to_scope==2 | 
+         edgelist_quotes_ff2plot$to_scope==3), 
+  "European media", 
+  edgelist_quotes_ff2plot$to_act_scope)
+
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==40 & 
+      edgelist_quotes_ff2plot$to_scope==1, 
+  "national media",
+  edgelist_quotes_ff2plot$to_act_scope)
+
+edgelist_quotes_ff2plot$to_act_scope <- ifelse(
+  edgelist_quotes_ff2plot$to_actor_group==60,
+  "citizens",
+  edgelist_quotes_ff2plot$to_act_scope)
+```
+
+```{r}
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==10 & 
+      (edgelist_replies_ff2plot$to_scope==2 | 
+         edgelist_replies_ff2plot$to_scope==3), 
+  "European politicians", 
+  "")
+
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==10 & 
+      edgelist_replies_ff2plot$to_scope==1, 
+  "national politicians",
+  edgelist_replies_ff2plot$to_act_scope)
+
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==30 & 
+      (edgelist_replies_ff2plot$to_scope==2 | 
+         edgelist_replies_ff2plot$to_scope==3), 
+  "European civil society", 
+  edgelist_replies_ff2plot$to_act_scope)
+
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==30 & 
+      edgelist_replies_ff2plot$to_scope==1, 
+  "national civil society",
+  edgelist_replies_ff2plot$to_act_scope)
+
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==40 & 
+      (edgelist_replies_ff2plot$to_scope==2 | 
+         edgelist_replies_ff2plot$to_scope==3), 
+  "European media", 
+  edgelist_replies_ff2plot$to_act_scope)
+
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==40 & 
+      edgelist_replies_ff2plot$to_scope==1, 
+  "national media",
+  edgelist_replies_ff2plot$to_act_scope)
+
+edgelist_replies_ff2plot$to_act_scope <- ifelse(
+  edgelist_replies_ff2plot$to_actor_group==60,
+  "citizens",
+  edgelist_replies_ff2plot$to_act_scope)
+```
+
+# Check
+```{r}
+table(edgelist_mentions_ff2plot$act_scope)
+table(edgelist_mentions_ff2plot$to_act_scope)
+
+# Recode "" to "other"
+data_list <- list(edgelist_mentions_ff2plot, edgelist_retweets_ff2plot, edgelist_quotes_ff2plot, edgelist_replies_ff2plot)
+
+recode_func <- function(data) {
+  data$to_act_scope <- ifelse(data$to_act_scope=="", 
+                              "other", 
+                              data$to_act_scope) 
+  return(data)
+}
+
+data_list <- lapply(data_list, recode_func)
+
+edgelist_mentions_ff2plot <- data_list[[1]] 
+edgelist_retweets_ff2plot <- data_list[[2]] 
+edgelist_quotes_ff2plot <- data_list[[3]] 
+edgelist_replies_ff2plot <- data_list[[4]]
+```
+
+# Subset only needed columns for plotting
+```{r}
+variables <- c("source_id", "target_id", "from_name", "to_name", "act_scope", "to_act_scope")
+
+mentions_plot_ff2 <- edgelist_mentions_ff2plot[variables]
+retweets_plot_ff2 <- edgelist_retweets_ff2plot[variables]
+quotes_plot_ff2 <- edgelist_quotes_ff2plot[variables]
+replies_plot_ff2 <- edgelist_replies_ff2plot[variables]
+```
+
+# Plot
+```{r}
+# Make long df
+mentions_plot_ff2 <- edgelist_mentions_ff2plot %>%
+  make_long(act_scope, to_act_scope)
+
+mentions_plot_ff2 <- mentions_plot_ff2[complete.cases(mentions_plot_ff2), ]
+
+# retweets
+retweets_plot_ff2 <- edgelist_retweets_ff2plot %>%
+  make_long(act_scope, to_act_scope)
+
+retweets_plot_ff2 <- retweets_plot_ff2[complete.cases(retweets_plot_ff2), ]
+
+# quotes
+quotes_plot_ff2 <- edgelist_quotes_ff2plot %>%
+  make_long(act_scope, to_act_scope)
+
+quotes_plot_ff2 <- quotes_plot_ff2[complete.cases(quotes_plot_ff2), ]
+
+# replies
+replies_plot_ff2 <- edgelist_replies_ff2plot %>%
+  make_long(act_scope, to_act_scope)
+
+replies_plot_ff2 <- replies_plot_ff2[complete.cases(replies_plot_ff2), ]
+```
+
+```{r}
+#MENTIONS
+ggplot(data = mentions_plot_ff2, aes(axis1 = node, axis2 = next_node)) +
+  geom_alluvium(aes(fill = node), curve_type = "cubic") +
+  geom_stratum(aes(fill = node)) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("node", "next_node"), expand = c(0.15, 0.05)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  guides(fill = guide_legend(title = "Propotion of edges from"))
+```
+
+```{r}
+# Retweets
+ggplot(data = quotes_plot_ff2, aes(axis1 = node, axis2 = next_node)) +
+  geom_alluvium(aes(fill = node), curve_type = "cubic") +
+  geom_stratum(aes(fill = node)) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("node", "next_node"), expand = c(0.15, 0.05)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  ggtitle("Edges between actor groups in retweet network") +
+  guides(fill = guide_legend(title = "Propotion of edges from"))
+```
+
+```{r}
+# Quotes
+ggplot(data = quotes_plot_ff2, aes(axis1 = node, axis2 = next_node)) +
+  geom_alluvium(aes(fill = node), curve_type = "cubic") +
+  geom_stratum(aes(fill = node)) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("node", "next_node"), expand = c(0.15, 0.05)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  ggtitle("Edges between actor groups in quote network") +
+  guides(fill = guide_legend(title = "Propotion of edges from"))
+```
+
+```{r}
+# Replies
+ggplot(data = replies_plot_ff2, aes(axis1 = node, axis2 = next_node)) +
+  geom_alluvium(aes(fill = node), curve_type = "cubic") +
+  geom_stratum(aes(fill = node)) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  scale_x_discrete(limits = c("node", "next_node"), expand = c(0.15, 0.05)) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  ggtitle("Edges between actor groups in reply network") +
+  guides(fill = guide_legend(title = "Propotion of edges from"))
+```
+
