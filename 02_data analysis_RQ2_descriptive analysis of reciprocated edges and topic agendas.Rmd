@@ -1,0 +1,826 @@
+---
+title: "Auswertung Diss_FF2_deskriptiv"
+author: "Vivien Benert"
+date: "30 8 2022"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(igraph)
+library(dplyr)
+library(descr)
+
+# Data: graphs can be created from edgelist and nodelist
+```
+
+# Create graphs with reciprocated edges
+```{r}
+# Write logical vector whether edge is reciprocated as edge attribute
+E(graph_mentions)$is_mutual <- which_mutual(graph_mentions, es=E(graph_mentions))
+E(graph_retweets)$is_mutual <- which_mutual(graph_retweets, es=E(graph_retweets))
+E(graph_quotes)$is_mutual <- which_mutual(graph_quotes, es=E(graph_quotes))
+E(graph_replies)$is_mutual <- which_mutual(graph_replies, es=E(graph_replies))
+
+# Subgraph with only reciprocated edges
+graph_mentions_recip <- subgraph.edges(graph_mentions, E(graph_mentions)[E(graph_mentions)$is_mutual==TRUE])
+graph_retweets_recip <- subgraph.edges(graph_retweets, E(graph_retweets)[E(graph_retweets)$is_mutual==TRUE])
+graph_quotes_recip <- subgraph.edges(graph_quotes, E(graph_quotes)[E(graph_quotes)$is_mutual==TRUE])
+graph_replies_recip <- subgraph.edges(graph_replies, E(graph_replies)[E(graph_replies)$is_mutual==TRUE])
+```
+
+# Create edgelists and nodelists
+```{r}
+nodelist_mentions_recip <- as_data_frame(graph_mentions_recip, what="vertices")
+nodelist_retweets_recip <- as_data_frame(graph_retweets_recip, what="vertices")
+nodelist_quotes_recip <- as_data_frame(graph_quotes_recip, what="vertices")
+nodelist_replies_reip <- as_data_frame(graph_replies_recip, what="vertices")
+
+edgelist_mentions_recip <- as_long_data_frame(graph_mentions_recip)
+edgelist_retweets_recip <- as_long_data_frame(graph_retweets_recip)
+edgelist_quotes_recip <- as_long_data_frame(graph_quotes_recip)
+edgelist_replies_recip <- as_long_data_frame(graph_replies_recip)
+```
+
+# Descriptive Analysis
+```{r}
+# Frequencies of senofs and receivers by actor group and political leaning
+# Mentions
+freq(edgelist_mentions_recip$from_actor_group, user.missing=0)
+freq(edgelist_mentions_recip$to_actor_group, user.missing=0)
+freq(edgelist_mentions_recip$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_mentions_recip$to_pol_leaning, user.missing=c(0, 999))
+```
+
+```{r}
+# Frequencies of senofs and receivers by actor group and political leaning
+# Retweets
+freq(edgelist_retweets_recip$from_actor_group, user.missing=0)
+freq(edgelist_retweets_recip$to_actor_group, user.missing=0)
+freq(edgelist_retweets_recip$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_retweets_recip$to_pol_leaning, user.missing=c(0, 999))
+```
+
+```{r}
+# Frequencies of senofs and receivers by actor group and political leaning
+# Quotes
+freq(edgelist_quotes_recip$from_actor_group, user.missing=0)
+freq(edgelist_quotes_recip$to_actor_group, user.missing=0)
+freq(edgelist_quotes_recip$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_quotes_recip$to_pol_leaning, user.missing=c(0, 999))
+```
+
+```{r}
+# Frequencies of senofs and receivers by actor group and political leaning
+# Replies
+freq(edgelist_replies_recip$from_actor_group, user.missing=0)
+freq(edgelist_replies_recip$to_actor_group, user.missing=0)
+freq(edgelist_replies_recip$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_replies_recip$to_pol_leaning, user.missing=c(0, 999))
+```
+
+# Cross Tabs
+```{r}
+# Recode 0 to NA for Crosstabs
+edgelist_mentions_recip[edgelist_mentions_recip==0] <- NA
+edgelist_retweets_recip[edgelist_retweets_recip==0] <- NA
+edgelist_quotes_recip[edgelist_quotes_recip==0] <- NA
+edgelist_replies_recip[edgelist_replies_recip==0] <- NA
+
+edgelist_mentions[edgelist_mentions==0] <- NA
+edgelist_retweets[edgelist_retweets==0] <- NA
+edgelist_quotes[edgelist_quotes==0] <- NA
+edgelist_replies[edgelist_replies==0] <- NA
+```
+
+```{r}
+# Actor groups
+descr::CrossTable(edgelist_mentions_recip$to_actor_group, edgelist_mentions_recip$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Pol leaning
+descr::CrossTable(edgelist_mentions_recip$to_pol_leaning, edgelist_mentions_recip$from_pol_leaning, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# From pol leaning to actor group
+descr::CrossTable(edgelist_mentions_recip$to_actor_group, edgelist_mentions_recip$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Subquestion 1: Who addresses European politicians most often?
+```{r}
+# MENTIONS
+# Subset of edges to European level politicians
+edgelist_mentions_EUpol <- edgelist_mentions[which(edgelist_mentions$to_actor_group==10
+& (edgelist_mentions$to_scope==2 | edgelist_mentions$to_scope==3)),]
+
+edgelist_mentions_EUpol[edgelist_mentions_EUpol==0] <- NA
+
+# Freq: Actor groups addressing European level politicians
+freq(edgelist_mentions_EUpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to European level politicians
+freq(edgelist_mentions_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_mentions_EUpol$from_pol_leaning, edgelist_mentions_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_mentions_EUpol$edge_scope_new, edgelist_mentions_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Retweets
+# Subset of edges to European level politicians
+edgelist_retweets_EUpol <- edgelist_retweets[which(edgelist_retweets$to_actor_group==10
+& (edgelist_retweets$to_scope==2 | edgelist_retweets$to_scope==3)),]
+
+edgelist_retweets_EUpol[edgelist_retweets_EUpol==0] <- NA
+
+# Freq: Actor groups addressing European level politicians
+freq(edgelist_retweets_EUpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to European level politicians
+freq(edgelist_retweets_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_retweets_EUpol$from_pol_leaning, edgelist_retweets_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_retweets_EUpol$edge_scope_new, edgelist_retweets_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Quotes
+# Subset of edges to European level politicians
+edgelist_quotes_EUpol <- edgelist_quotes[which(edgelist_quotes$to_actor_group==10
+& (edgelist_quotes$to_scope==2 | edgelist_quotes$to_scope==3)),]
+
+edgelist_quotes_EUpol[edgelist_quotes_EUpol==0] <- NA
+
+# Freq: Actor groups addressing European level politicians
+freq(edgelist_quotes_EUpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to European level politicians
+freq(edgelist_quotes_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_quotes_EUpol$from_pol_leaning, edgelist_quotes_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_quotes_EUpol$edge_scope_new, edgelist_quotes_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Replies
+# Subset of edges to European level politicians
+edgelist_replies_EUpol <- edgelist_replies[which(edgelist_replies$to_actor_group==10
+& (edgelist_replies$to_scope==2 | edgelist_replies$to_scope==3)),]
+
+edgelist_replies_EUpol[edgelist_replies_EUpol==0] <- NA
+
+# Freq: Actor groups addressing European level politicians
+freq(edgelist_replies_EUpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to European level politicians
+freq(edgelist_replies_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_replies_EUpol$from_pol_leaning, edgelist_replies_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+ct <- descr::CrossTable(edgelist_replies_EUpol$edge_scope_new, edgelist_replies_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Subquestion 2: Who addresses European politicians most often?
+```{r}
+# Subset national politicians
+edgelist_mentions_natpol <- edgelist_mentions[which(edgelist_mentions$to_actor_group==10
+& edgelist_mentions$to_scope==1),]
+
+edgelist_mentions_natpol[edgelist_mentions_natpol==0] <- NA
+
+# Freq: Actor groups addressing national level politicians
+freq(edgelist_mentions_natpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to national level politicians
+freq(edgelist_mentions_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_mentions_natpol$from_pol_leaning, edgelist_mentions_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_mentions_natpol$edge_scope_new, edgelist_mentions_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset national politicians
+edgelist_retweets_natpol <- edgelist_retweets[which(edgelist_retweets$to_actor_group==10
+& edgelist_retweets$to_scope==1),]
+
+edgelist_retweets_natpol[edgelist_retweets_natpol==0] <- NA
+
+# Freq: Actor groups addressing national level politicians
+freq(edgelist_retweets_natpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to national level politicians
+freq(edgelist_retweets_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_retweets_natpol$from_pol_leaning, edgelist_retweets_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_retweets_natpol$edge_scope_new, edgelist_retweets_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset national politicians
+edgelist_quotes_natpol <- edgelist_quotes[which(edgelist_quotes$to_actor_group==10
+& edgelist_quotes$to_scope==1),]
+
+edgelist_quotes_natpol[edgelist_quotes_natpol==0] <- NA
+
+# Freq: Actor groups addressing national level politicians
+freq(edgelist_quotes_natpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to national level politicians
+freq(edgelist_quotes_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_quotes_natpol$from_pol_leaning, edgelist_quotes_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_quotes_natpol$edge_scope_new, edgelist_quotes_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset national politicians
+edgelist_replies_natpol <- edgelist_replies[which(edgelist_replies$to_actor_group==10
+& edgelist_replies$to_scope==1),]
+
+edgelist_replies_natpol[edgelist_replies_natpol==0] <- NA
+
+# Freq: Actor groups addressing national level politicians
+freq(edgelist_replies_natpol$from_actor_group, user.missing=c(0, 999))
+
+# Freq: Edge Scope of edges to national level politicians
+freq(edgelist_replies_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Crosstab: From actor group by pol leaning
+descr::CrossTable(edgelist_replies_natpol$from_pol_leaning, edgelist_replies_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Crosstab: From actor group by edge scope
+descr::CrossTable(edgelist_replies_natpol$edge_scope_new, edgelist_replies_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Subquestion 3: Percentage of reciprocated ties with European politicians
+Which percantages of ties to European politicians are reciprocated?
+```{r}
+# Subset reciprocated ties to European level politicians
+edgelist_mentions_recip_EUpol <- edgelist_mentions_recip[which(edgelist_mentions_recip$to_actor_group==10
+& (edgelist_mentions_recip$to_scope==2 | edgelist_mentions_recip$to_scope==3)),]
+
+edgelist_mentions_recip_EUpol[edgelist_mentions_recip_EUpol==0] <- NA
+
+# Reciprocated edges to EU Pol Act by actor group
+freq(edgelist_mentions_recip_EUpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_mentions_recip_EUpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_mentions_recip_EUpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_mentions_recip_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Recprocated ties to EU pol act by pol leaning of actor group
+ descr::CrossTable(edgelist_mentions_recip_EUpol$from_pol_leaning, edgelist_mentions_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope reziproker Beziehungen to EU pol act je actor group
+descr::CrossTable(edgelist_mentions_recip_EUpol$edge_scope_new, edgelist_mentions_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset reciprocated ties to European level politicians
+edgelist_retweets_recip_EUpol <- edgelist_retweets_recip[which(edgelist_retweets_recip$to_actor_group==10
+& (edgelist_retweets_recip$to_scope==2 | edgelist_retweets_recip$to_scope==3)),]
+
+edgelist_retweets_recip_EUpol[edgelist_retweets_recip_EUpol==0] <- NA
+
+# Reciprocated edges to EU Pol Act by actor group
+freq(edgelist_retweets_recip_EUpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_retweets_recip_EUpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_retweets_recip_EUpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_retweets_recip_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to  EU pol act by pol leaning of actor group
+descr::CrossTable(edgelist_retweets_recip_EUpol$from_pol_leaning, edgelist_retweets_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to EU pol act by actor group
+descr::CrossTable(edgelist_retweets_recip_EUpol$edge_scope_new, edgelist_retweets_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset reciprocated ties to European level politicians
+edgelist_quotes_recip_EUpol <- edgelist_quotes_recip[which(edgelist_quotes_recip$to_actor_group==10
+& (edgelist_quotes_recip$to_scope==2 | edgelist_quotes_recip$to_scope==3)),]
+
+edgelist_quotes_recip_EUpol[edgelist_quotes_recip_EUpol==0] <- NA
+
+# Reciprocated edges to EU Pol Act by actor group
+freq(edgelist_quotes_recip_EUpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_quotes_recip_EUpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_quotes_recip_EUpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_quotes_recip_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to EU pol act by pol leaning of actor group
+descr::CrossTable(edgelist_quotes_recip_EUpol$from_pol_leaning, edgelist_quotes_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to EU pol act by actor group
+descr::CrossTable(edgelist_quotes_recip_EUpol$edge_scope_new, edgelist_quotes_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset reciprocated ties to European level politicians
+edgelist_replies_recip_EUpol <- edgelist_replies_recip[which(edgelist_replies_recip$to_actor_group==10
+& (edgelist_replies_recip$to_scope==2 | edgelist_replies_recip$to_scope==3)),]
+
+edgelist_replies_recip_EUpol[edgelist_replies_recip_EUpol==0] <- NA
+
+# Reciprocated edges to EU Pol Act by actor group
+freq(edgelist_replies_recip_EUpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_replies_recip_EUpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_replies_recip_EUpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_replies_recip_EUpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to  EU pol act by pol leaning of actor group
+descr::CrossTable(edgelist_replies_recip_EUpol$from_pol_leaning, edgelist_replies_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to EU pol act by actor group
+descr::CrossTable(edgelist_replies_recip_EUpol$edge_scope_new, edgelist_replies_recip_EUpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Reciprocated edges to national politcians
+
+```{r}
+# Subset reciprocated ties to national level politicians
+edgelist_mentions_recip_natpol <- edgelist_mentions_recip[which(edgelist_mentions_recip$to_actor_group==10
+& edgelist_mentions_recip$to_scope==1),]
+
+edgelist_mentions_recip_natpol[edgelist_mentions_recip_natpol==0] <- NA
+
+# Reciprocated edges to national Pol Act by actor group
+freq(edgelist_mentions_recip_natpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_mentions_recip_natpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_mentions_recip_natpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_mentions_recip_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to national pol act by pol leaning of actor group
+descr::CrossTable(edgelist_mentions_recip_natpol$from_pol_leaning, edgelist_mentions_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to national pol act by actor group
+descr::CrossTable(edgelist_mentions_recip_natpol$edge_scope_new, edgelist_mentions_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset reciprocated ties to national level politicians
+edgelist_retweets_recip_natpol <- edgelist_retweets_recip[which(edgelist_retweets_recip$to_actor_group==10
+& edgelist_retweets_recip$to_scope==1),]
+
+edgelist_retweets_recip_natpol[edgelist_retweets_recip_natpol==0] <- NA
+
+# Reciprocated edges to national Pol Act by actor group
+freq(edgelist_retweets_recip_natpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_retweets_recip_natpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_retweets_recip_natpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_retweets_recip_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to national pol act by pol leaning of actor group
+descr::CrossTable(edgelist_retweets_recip_natpol$from_pol_leaning, edgelist_retweets_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to national pol act by actor group
+descr::CrossTable(edgelist_retweets_recip_natpol$edge_scope_new, edgelist_retweets_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset reciprocated ties to national level politicians
+edgelist_quotes_recip_natpol <- edgelist_quotes_recip[which(edgelist_quotes_recip$to_actor_group==10
+& edgelist_quotes_recip$to_scope==1),]
+
+edgelist_quotes_recip_natpol[edgelist_quotes_recip_natpol==0] <- NA
+
+# Reciprocated edges to national Pol Act nach actor group
+freq(edgelist_quotes_recip_natpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_quotes_recip_natpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_quotes_recip_natpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_quotes_recip_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to national pol act by pol leaning of actor group
+descr::CrossTable(edgelist_quotes_recip_natpol$from_pol_leaning, edgelist_quotes_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to national pol act by actor group
+descr::CrossTable(edgelist_quotes_recip_natpol$edge_scope_new, edgelist_quotes_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset reciprocated ties to national level politicians
+edgelist_replies_recip_natpol <- edgelist_replies_recip[which(edgelist_replies_recip$to_actor_group==10
+& edgelist_replies_recip$to_scope==1),]
+
+edgelist_replies_recip_natpol[edgelist_replies_recip_natpol==0] <- NA
+
+# Reciprocated edges to national pol act by actor group
+freq(edgelist_replies_recip_natpol$from_actor_group, user.missing=c(0, 999))
+freq(edgelist_replies_recip_natpol$from_pol_leaning, user.missing=c(0, 999))
+freq(edgelist_replies_recip_natpol$from_civ_act, user.missing=c(0, 999))
+freq(edgelist_replies_recip_natpol$edge_scope_new, user.missing=c(0, 999))
+
+# Reciprocated edges to national pol act by pol leaning of actor group
+descr::CrossTable(edgelist_replies_recip_natpol$from_pol_leaning, edgelist_replies_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of reciprocated edges to national pol act by actor group
+descr::CrossTable(edgelist_replies_recip_natpol$edge_scope_new, edgelist_replies_recip_natpol$from_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Subquestion 4: Direct communication of European politicians to citizens
+How often do European politicians address civil society and citizens?
+
+```{r}
+# Subset ties FROM European level politicians
+edgelist_mentions_from_EUpol <- edgelist_mentions[which(edgelist_mentions$from_actor_group==10
+& (edgelist_mentions$from_scope==2 | edgelist_mentions$from_scope==3)),]
+
+# Edges from EU Pol Act to actor group
+freq(edgelist_mentions_from_EUpol$to_actor_group, user.missing=c(0, 999))
+# Edges from EU Pol Act to pol leaning
+freq(edgelist_mentions_from_EUpol$to_pol_leaning, user.missing=c(0, 999))
+# Edges from EU Pol Act to civil society actors
+freq(edgelist_mentions_from_EUpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from European pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_mentions_from_EUpol$to_pol_leaning, edgelist_mentions_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from European pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_mentions_from_EUpol$to_pol_leaning, edgelist_mentions_from_EUpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of edges from European pol act to Actor group
+descr::CrossTable(edgelist_mentions_from_EUpol$edge_scope_new, edgelist_mentions_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset ties FROM European level politicians
+edgelist_retweets_from_EUpol <- edgelist_retweets[which(edgelist_retweets$from_actor_group==10
+& (edgelist_retweets$from_scope==2 | edgelist_retweets$from_scope==3)),]
+
+# Edges from EU Pol Act to actor group
+freq(edgelist_retweets_from_EUpol$to_actor_group, user.missing=c(0, 999))
+# Edges from EU Pol Act to pol leaning
+freq(edgelist_retweets_from_EUpol$to_pol_leaning, user.missing=c(0, 999))
+# Edges from EU Pol Act to civil society actors
+freq(edgelist_retweets_from_EUpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from European pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_retweets_from_EUpol$to_pol_leaning, edgelist_retweets_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from European pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_retweets_from_EUpol$to_pol_leaning, edgelist_retweets_from_EUpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of edges from European pol act to Actor group
+descr::CrossTable(edgelist_retweets_from_EUpol$edge_scope_new, edgelist_retweets_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset ties FROM European level politicians
+edgelist_quotes_from_EUpol <- edgelist_quotes[which(edgelist_quotes$from_actor_group==10
+& (edgelist_quotes$from_scope==2 | edgelist_quotes$from_scope==3)),]
+
+# Edges from EU Pol Act to actor group
+freq(edgelist_quotes_from_EUpol$to_actor_group, user.missing=c(0, 999))
+# Edges from EU Pol Act to pol leaning
+freq(edgelist_quotes_from_EUpol$to_pol_leaning, user.missing=c(0, 999))
+# Edges from EU Pol Act to civil society actors
+freq(edgelist_quotes_from_EUpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from European pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_quotes_from_EUpol$to_pol_leaning, edgelist_quotes_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from European pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_quotes_from_EUpol$to_pol_leaning, edgelist_quotes_from_EUpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of edges from European pol act to Actor group
+descr::CrossTable(edgelist_quotes_from_EUpol$edge_scope_new, edgelist_quotes_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+
+```{r}
+# Subset ties FROM European level politicians
+edgelist_replies_from_EUpol <- edgelist_replies[which(edgelist_replies$from_actor_group==10
+& (edgelist_replies$from_scope==2 | edgelist_replies$from_scope==3)),]
+
+# Edges from EU Pol Act to actor group
+freq(edgelist_replies_from_EUpol$to_actor_group, user.missing=c(0, 999))
+# Edges from EU Pol Act to pol leaning
+freq(edgelist_replies_from_EUpol$to_pol_leaning, user.missing=c(0, 999))
+# Edges from EU Pol Act to civil society actors
+freq(edgelist_replies_from_EUpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from European pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_replies_from_EUpol$to_pol_leaning, edgelist_replies_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from European pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_replies_from_EUpol$to_pol_leaning, edgelist_replies_from_EUpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of Edges from European pol act to Actor group
+descr::CrossTable(edgelist_replies_from_EUpol$edge_scope_new, edgelist_replies_from_EUpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Subquestion 5: Direct communication of national politicians to citizens
+How often do national politicians address civil society and citizens?
+```{r}
+# Subset ties FROM national level politicians
+edgelist_mentions_from_natpol <- edgelist_mentions[which(edgelist_mentions$from_actor_group==10
+& edgelist_mentions$from_scope==1),]
+
+# Edges from national Pol Act to actor group
+freq(edgelist_mentions_from_natpol$to_actor_group, user.missing=c(0, 999))
+
+# Edges from national Pol Act to pol leaning
+freq(edgelist_mentions_from_natpol$to_pol_leaning, user.missing=c(0, 999))
+
+# Edges from national Pol Act to civil society actors
+freq(edgelist_mentions_from_natpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from national pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_mentions_from_natpol$to_pol_leaning, edgelist_mentions_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from national pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_mentions_from_natpol$to_pol_leaning, edgelist_mentions_from_natpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of Edges from national pol act to Actor group
+descr::CrossTable(edgelist_mentions_from_natpol$edge_scope_new, edgelist_mentions_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset ties FROM national level politicians
+edgelist_retweets_from_natpol <- edgelist_retweets[which(edgelist_retweets$from_actor_group==10
+& edgelist_retweets$from_scope==1),]
+
+# Edges from national Pol Act to actor group
+freq(edgelist_retweets_from_natpol$to_actor_group, user.missing=c(0, 999))
+# Edges from national Pol Act to pol leaning
+freq(edgelist_retweets_from_natpol$to_pol_leaning, user.missing=c(0, 999))
+# Edges from national Pol Act to civil society actors
+freq(edgelist_retweets_from_natpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from national pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_retweets_from_natpol$to_pol_leaning, edgelist_retweets_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from national pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_retweets_from_natpol$to_pol_leaning, edgelist_retweets_from_natpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of Edges from national pol act to Actor group
+descr::CrossTable(edgelist_retweets_from_natpol$edge_scope_new, edgelist_retweets_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset ties FROM national level politicians
+edgelist_quotes_from_natpol <- edgelist_quotes[which(edgelist_quotes$from_actor_group==10
+& edgelist_quotes$from_scope==1),]
+
+# Edges from national Pol Act to actor group
+freq(edgelist_quotes_from_natpol$to_actor_group, user.missing=c(0, 999))
+
+# Edges from national Pol Act to pol leaning
+freq(edgelist_quotes_from_natpol$to_pol_leaning, user.missing=c(0, 999))
+
+# Edges from national Pol Act to civil society actors
+freq(edgelist_quotes_from_natpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from national pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_quotes_from_natpol$to_pol_leaning, edgelist_quotes_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from national pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_quotes_from_natpol$to_pol_leaning, edgelist_quotes_from_natpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of Edges from national pol act to Actor group
+descr::CrossTable(edgelist_quotes_from_natpol$edge_scope_new, edgelist_quotes_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+# Subset ties FROM national level politicians
+edgelist_replies_from_natpol <- edgelist_replies[which(edgelist_replies$from_actor_group==10
+& edgelist_replies$from_scope==1),]
+
+# Edges from national Pol Act to actor group
+freq(edgelist_replies_from_natpol$to_actor_group, user.missing=c(0, 999))
+
+# Edges from national Pol Act to pol leaning
+freq(edgelist_replies_from_natpol$to_pol_leaning, user.missing=c(0, 999))
+
+# Edges from national Pol Act to civil society actors
+freq(edgelist_replies_from_natpol$to_civ_act, user.missing=c(0, 999))
+
+# Edges from national pol act to Actor group by pol leaning
+descr::CrossTable(edgelist_replies_from_natpol$to_pol_leaning, edgelist_replies_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edges from national pol act to civil society group by pol leaning
+descr::CrossTable(edgelist_replies_from_natpol$to_pol_leaning, edgelist_replies_from_natpol$to_civ_act, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+
+# Edge scope of Edges from national pol act to Actor group
+descr::CrossTable(edgelist_replies_from_natpol$edge_scope_new, edgelist_replies_from_natpol$to_actor_group, digits=2, max.width = 5, expected=FALSE, prop.r=F, prop.c=TRUE, prop.t=F, prop.chisq=FALSE, chisq = FALSE, format = "SPSS")
+```
+
+# Subquestion 6: Comparison of topic agendas citizens/civil society and politicians
+Load topic model data tt_tr_stm und nodelist_df_stm
+
+# Group STM by actor group
+```{r}
+x <- tt_tr_stm %>% group_by(actor_group)
+
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25))
+
+y$total <- rowSums(y[, c(2:26)]) # row sum = number of tweets
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)])
+colnames(y) <- c("actor_group","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+topics_actors <- cbind(y, z)
+```
+
+# Get topic agendas of national and European politicians
+```{r}
+# Subset data by political actors
+tt_tr_stm_politicians <- tt_tr_stm[which(tt_tr_stm$actor_group==10),]
+View(tt_tr_stm_politicians)
+tt_tr_stm_politicians$scope_v2 <- ifelse(tt_tr_stm_politicians$scope==2 | tt_tr_stm_politicians$scope==3, 3, tt_tr_stm_politicians$scope)
+```
+
+# Group by scope
+```{r}
+x <- tt_tr_stm_politicians %>% group_by(scope_v2)
+
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25)
+)
+
+y$total <- rowSums(y[, c(2:26)])
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)]) 
+colnames(y) <- c("scope","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+topics_politicians <- cbind(y, z)
+```
+
+# Get topic agendas of national and European civil society
+```{r}
+# Subset data by political actors
+tt_tr_stm_civil <- tt_tr_stm[which(tt_tr_stm$actor_group==30),]
+tt_tr_stm_civil$scope_v2 <- ifelse(tt_tr_stm_civil$scope==2 | tt_tr_stm_civil$scope==3, 3, tt_tr_stm_civil$scope)
+```
+
+# Group by scope
+```{r}
+x <- tt_tr_stm_civil %>% group_by(scope_v2)
+
+y <- x %>% summarise(
+  t_1 = sum(Topic1),
+  t_2 = sum(Topic2),
+  t_3 = sum(Topic3),
+  t_4 = sum(Topic4),
+  t_5 = sum(Topic5),
+  t_6 = sum(Topic6),
+  t_7 = sum(Topic7),
+  t_8 = sum(Topic8),
+  t_9 = sum(Topic9),
+  t_10 = sum(Topic10),
+  t_11 = sum(Topic11),
+  t_12 = sum(Topic12),
+  t_13 = sum(Topic13),
+  t_14 = sum(Topic14),
+  t_15 = sum(Topic15),
+  t_16 = sum(Topic16),
+  t_17 = sum(Topic17),
+  t_18 = sum(Topic18),
+  t_19 = sum(Topic19),
+  t_20 = sum(Topic20),
+  t_21 = sum(Topic21),
+  t_22 = sum(Topic22),
+  t_23 = sum(Topic23),
+  t_24 = sum(Topic24),
+  t_25 = sum(Topic25)
+)
+
+y$total <- rowSums(y[, c(2:26)])
+z <- as.data.frame(y)
+z <- z[,2:26]/z[,27] 
+z$total <- rowSums(z[, c(1:25)])
+colnames(y) <- c("scope","sum_1","sum_2","sum_3","sum_4", "sum_5", "sum_6", "sum_7", "sum_8", "sum_9", "sum_10", "sum_11", "sum_12", "sum_13", "sum_14", "sum_15", "sum_16", "sum_17", "sum_18", "sum_19", "sum_20", "sum_21", "sum_22", "sum_23", "sum_24", "sum_25", "no_tweets")
+topics_civil <- cbind(y, z)
+```
+
+# Transpose df for (spearman) correlation
+```{r}
+names(topics_actors)
+topics_actors <- topics_actors[, c(1, 28:52)]
+topics_civil <- topics_civil[, c(1, 28:52)]
+topics_politicians <- topics_politicians[, c(1, 28:52)]
+
+# transpose
+topics_actors <- t(topics_actors)
+colnames(topics_actors) <- c("null", "political_actors", "economic_actors", "civil_society", "media", "cultural_actors", "citizens", "other", "unavailable")
+topics_actors <- topics_actors[-1,] # delete first row
+View(topics_actors)
+topics_actors <- as.data.frame(topics_actors)
+
+topics_civil <- t(topics_civil)
+colnames(topics_civil) <- c("national", "European", "international", "global", "unclear")
+topics_civil <- topics_civil[-1,] # delete first row
+View(topics_civil)
+topics_civil_df <- as.data.frame(topics_civil)
+
+topics_politicians <- t(topics_politicians)
+colnames(topics_politicians) <- c("national", "European", "global", "unclear")
+topics_politicians <- topics_politicians[-1,] # delete first row
+View(topics_politicians)
+topics_politicians_df <- as.data.frame(topics_politicians)
+```
+
+# New dfs
+```{r}
+politicians <- as.data.frame(topics_actors_df$political_actors)
+civil_society <- as.data.frame(topics_actors_df$civil_society)
+citizens <- as.data.frame(topics_actors_df$citizens)
+media <- as.data.frame(topics_actors_df$media)
+
+politicians_national <- as.data.frame(topics_politicians_df$national)
+politicians_europen <- as.data.frame(topics_politicians_df$European)
+
+civil_national <- as.data.frame(topics_civil_df$national)
+civil_european <- as.data.frame(topics_civil_df$European)
+
+# Bind
+topics_corr_total <- cbind(politicians, civil_society, media, citizens)
+# Citizens and politcians
+topics_corr_pol_cit <- cbind(politicians_national, politicians_europen, citizens)
+# Civil society and politicians 
+topics_corr_pol_civ <- cbind(politicians_national, politicians_europen, civil_national, civil_european)
+```
+
+# Subquestion 7: Correlations of topics proportions by actor groups
+```{r}
+#Pearson
+pearson_matrix_total <- round(cor(topics_corr_total),
+  digits = 3) # rounded to 3 decimals
+pearson_matrix_pol_cit <- round(cor(topics_corr_pol_cit),
+  digits = 3) # rounded to 3 decimals
+pearson_matrix_pol_civ <- round(cor(topics_corr_pol_civ),
+  digits = 3) # rounded to 3 decimals
+```
